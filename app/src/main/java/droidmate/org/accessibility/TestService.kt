@@ -43,10 +43,10 @@ open class TestService : AccessibilityService() {
         }
     }
 
-    suspend fun waitForIdle() {
+    /*suspend fun waitForIdle() {
         waitingForIdle.set(true)
         while (waitingForIdle.get()) {
             delay(10)
         }
-    }
+    }*/
 }

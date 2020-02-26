@@ -12,7 +12,6 @@ import android.os.Build
 import android.os.RemoteException
 import android.util.Log
 import android.view.KeyEvent
-import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
 import droidmate.org.accessibility.IEngine.Companion.TAG
 import droidmate.org.accessibility.IEngine.Companion.debug
@@ -25,21 +24,14 @@ import droidmate.org.accessibility.utils.api
 import droidmate.org.accessibility.utils.debugEnabled
 import droidmate.org.accessibility.utils.debugOut
 import droidmate.org.accessibility.utils.measurePerformance
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import org.droidmate.deviceInterface.exploration.Click
-import org.droidmate.deviceInterface.exploration.ClickEvent
-import org.droidmate.deviceInterface.exploration.ExplorationAction
-import org.droidmate.deviceInterface.exploration.LongClick
-import org.droidmate.deviceInterface.exploration.LongClickEvent
-import org.droidmate.deviceInterface.exploration.Tick
+import org.droidmate.deviceInterface.exploration.*
+import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
 import kotlin.system.measureTimeMillis
+
 
 open class AutomationEngine(
     private val notificationChannel: Channel<Long>,
@@ -116,8 +108,20 @@ open class AutomationEngine(
         } else {
             val deviceData = windowEngine.fetchDeviceData()
             val widgets = deviceData.widgets
-            val target = widgets.random(random)
-            clickEvent(ClickEvent(target.idHash))
+            val target = widgets
+                .filter { it.clickable }
+                .random(random)
+            Log.w(TAG, "target: $target")
+            //clickEvent(ClickEvent(target.idHash))
+            //longClickEvent(LongClickEvent(target.idHash))
+            //minimizeMaximize()
+            //tick(Tick(target.idHash,
+            //    target.boundaries.center.first,
+            //    target.boundaries.center.second))
+            //pressBack()
+            //pressHome()
+            pressEnter()
+
             /*val appWindow = displayedWindows.first {
                 it.w.pkgName.contains("ch.bailu.aat")
             }
@@ -137,7 +141,7 @@ open class AutomationEngine(
     private fun setupDevice() {
         try {
             // wake up the device in order to have (non-black) screenshots
-            service.performGlobalAction(KeyEvent.KEYCODE_WAKEUP)
+            sendKeyEvent(KeyEvent.KEYCODE_WAKEUP)
             // Orientation is set initially to natural, however can be changed by action
 //			device.setOrientationNatural()
 //			device.freezeRotation()
@@ -186,20 +190,20 @@ open class AutomationEngine(
 
     private suspend fun minimizeMaximize() {
         val currentPackage = activeAppPackage
-        Log.d(TAG, "Original package name $currentPackage")
+        Log.d(TAG, "Minimizing and maximizing current package $currentPackage")
 
         pressRecentApps()
         // Cannot use wait for changes because it crashes UIAutomator
-        delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
-        measureTimeMillis { service.waitForIdle() }
+        //delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
+        measureTimeMillis { waitForIdle() }
             .let { Log.d(TAG, "waited $it millis for IDLE") }
 
         for (i in (0 until 10)) {
             pressRecentApps()
 
             // Cannot use wait for changes because it waits some interact-able element
-            delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
-            measureTimeMillis { service.waitForIdle() }
+            //delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
+            measureTimeMillis { waitForIdle() }
                 .let { Log.d(TAG, "waited $it millis for IDLE") }
 
             Log.d(TAG, "Current package name $activeAppPackage")
@@ -306,6 +310,21 @@ open class AutomationEngine(
 
     private fun pressBack() {
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+    }
+
+    private fun pressEnter() {
+        sendKeyEvent(KeyEvent.KEYCODE_ENTER)
+    }
+
+    private fun sendKeyEvent(keyCode: Int) {
+        try {
+            val keyCommand = "input keyevent $keyCode"
+            val runtime = Runtime.getRuntime()
+            val shellProcess = runtime.exec(keyCommand)
+            shellProcess.waitFor()
+        } catch (e: IOException) {
+            Log.e(TAG, "Unable to send key event $keyCode", e)
+        }
     }
 
     private fun enableWifi() {

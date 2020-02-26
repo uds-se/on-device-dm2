@@ -1,5 +1,6 @@
 package droidmate.org.accessibility
 
+import android.R.attr.keycode
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.graphics.Point
@@ -17,7 +18,6 @@ import droidmate.org.accessibility.extensions.isHomeScreen
 import droidmate.org.accessibility.extensions.visibleAxis
 import droidmate.org.accessibility.parsing.DisplayDimension
 import droidmate.org.accessibility.parsing.DisplayedWindow
-import droidmate.org.accessibility.parsing.SiblingNodeComparator
 import droidmate.org.accessibility.parsing.UiHierarchy
 import droidmate.org.accessibility.utils.NodeProcessor
 import droidmate.org.accessibility.utils.PostProcessor
@@ -30,7 +30,6 @@ import kotlinx.coroutines.delay
 import org.droidmate.deviceInterface.exploration.DeviceResponse
 import org.droidmate.deviceInterface.exploration.UiElementPropertiesI
 
-import java.lang.RuntimeException
 
 class WindowEngine(
     private val uiHierarchy: UiHierarchy,
