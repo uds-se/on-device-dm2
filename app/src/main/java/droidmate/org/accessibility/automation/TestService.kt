@@ -21,17 +21,17 @@ open class TestService : AccessibilityService() {
             idleNotificationChannel
         )
     private val waitingForIdle = AtomicBoolean(false)
-    private lateinit var automationEngine: AutomationEngine
+    private val automationEngine: AutomationEngine by lazy {
+        AutomationEngine(idleNotificationChannel, this)
+    }
 
     override fun onServiceConnected() {
         Log.i(TAG, "Service connected")
-        automationEngine =
-            AutomationEngine(
-                idleNotificationChannel,
-                this
-            )
-        automationEngine.run()
-        scheduler.start()
+
+        if (!scheduler.isRunning) {
+            automationEngine.run()
+            scheduler.start()
+        }
     }
 
     override fun onInterrupt() {

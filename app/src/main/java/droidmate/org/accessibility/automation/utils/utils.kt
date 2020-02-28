@@ -13,6 +13,7 @@ import org.droidmate.deviceInterface.exploration.Rectangle
 import org.xmlpull.v1.XmlSerializer
 
 const val TAG = "droidmate/Accessibility"
+const val TIME = "droidmate/measureTime"
 val backgroundScope = CoroutineScope(Dispatchers.Default + CoroutineName("background") + Job())   //same dispatcher as GlobalScope.launch
 
 val api = Build.VERSION.SDK_INT

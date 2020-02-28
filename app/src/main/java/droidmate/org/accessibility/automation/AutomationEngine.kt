@@ -22,10 +22,7 @@ import droidmate.org.accessibility.automation.parsing.UiParser
 import droidmate.org.accessibility.automation.parsing.UiSelector
 import droidmate.org.accessibility.automation.screenshot.IScreenshotEngine
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorder
-import droidmate.org.accessibility.automation.utils.api
-import droidmate.org.accessibility.automation.utils.debugEnabled
-import droidmate.org.accessibility.automation.utils.debugOut
-import droidmate.org.accessibility.automation.utils.measurePerformance
+import droidmate.org.accessibility.automation.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.droidmate.deviceInterface.exploration.*
@@ -134,7 +131,7 @@ open class AutomationEngine(
             val y = random.nextInt(appWindow.bounds.height())
             click(Click(x, y))*/
             }.let {
-                Log.i("AAA", "Took $it ms to act")
+                Log.i(TIME, "Took $it ms to act")
             }
         }
     }

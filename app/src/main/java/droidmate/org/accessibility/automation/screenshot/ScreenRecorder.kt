@@ -13,6 +13,7 @@ import droidmate.org.accessibility.automation.extensions.compress
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_START
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TAKE_SCREENSHOT
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TEARDOWN
+import droidmate.org.accessibility.automation.utils.TIME
 import droidmate.org.accessibility.automation.utils.backgroundScope
 import droidmate.org.accessibility.automation.utils.debugOut
 import droidmate.org.accessibility.automation.utils.debugT
@@ -22,6 +23,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import kotlin.math.max
+import kotlin.system.measureTimeMillis
 
 
 class ScreenRecorder private constructor(
@@ -35,11 +37,14 @@ class ScreenRecorder private constructor(
         var instance: ScreenRecorder? = null
             private set
 
-        fun new(context: Context,
-                mediaProjectionIntent: Intent,
-                imgQuality: Int = 10,
-                delayedImgTransfer: Boolean = false): ScreenRecorder {
-            instance = ScreenRecorder(context, mediaProjectionIntent, imgQuality, delayedImgTransfer)
+        fun new(
+            context: Context,
+            mediaProjectionIntent: Intent,
+            imgQuality: Int = 10,
+            delayedImgTransfer: Boolean = false
+        ): ScreenRecorder {
+            instance =
+                ScreenRecorder(context, mediaProjectionIntent, imgQuality, delayedImgTransfer)
             return get()
         }
 
@@ -84,17 +89,21 @@ class ScreenRecorder private constructor(
     }
 
     override fun takeScreenshot(actionNr: Int): Bitmap? {
-        handler.currBitmap = null
-        handler.waitingScreenshot.set(true)
-        handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
+        measureTimeMillis {
+            handler.currBitmap = null
+            handler.waitingScreenshot.set(true)
+            handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
 
-        while (handler.waitingScreenshot.get()) {
-            Thread.sleep(50)
-        }
+            while (handler.waitingScreenshot.get()) {
+                Thread.sleep(10)
+            }
+        }.let { Log.d(TIME, "waited $it millis for screenshot") }
 
         val bitmap = handler.currBitmap?.copy(handler.currBitmap?.config, true)
         backgroundScope.launch {
+            measureTimeMillis {
                 saveScreenshot(bitmap, actionNr.toString())
+            }.let { Log.d(TIME, "waited $it millis to save screenshot to disk screenshot") }
         }
 
         return bitmap

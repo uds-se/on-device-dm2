@@ -33,6 +33,11 @@ open class CoroutineScheduler(
         get() = canceled.get()
         set(value) = canceled.set(value)
 
+    val isRunning: Boolean
+        get() {
+            return lastTimestamp.get() > 0
+        }
+
     fun start() {
         val currTime = SystemClock.uptimeMillis()
         launch {
