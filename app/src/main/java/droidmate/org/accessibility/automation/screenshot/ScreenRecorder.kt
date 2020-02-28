@@ -1,46 +1,68 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation.screenshot
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Environment
+import android.os.HandlerThread
 import android.util.Log
-import droidmate.org.accessibility.IEngine.Companion.TAG
-import droidmate.org.accessibility.extensions.compress
-import droidmate.org.accessibility.utils.backgroundScope
-import droidmate.org.accessibility.utils.debugOut
-import droidmate.org.accessibility.utils.debugT
-import droidmate.org.accessibility.utils.nullableDebugT
+import droidmate.org.accessibility.automation.IEngine
+import droidmate.org.accessibility.automation.extensions.compress
+import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_START
+import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TAKE_SCREENSHOT
+import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TEARDOWN
+import droidmate.org.accessibility.automation.utils.backgroundScope
+import droidmate.org.accessibility.automation.utils.debugOut
+import droidmate.org.accessibility.automation.utils.debugT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
 
-open class ScreenshotEngine @JvmOverloads constructor(
-    private val imgQuality: Int,
-    private val delayedImgTransfer: Boolean,
-    private val imgDir: File = Environment.getExternalStorageDirectory().resolve("DM-2/images")
-): IScreenshotEngine {
+
+class ScreenRecorder(
+    private val context: Context,
+    private val mediaProjectionIntent: Intent,
+    private val imgQuality: Int = 10,
+    private val delayedImgTransfer: Boolean = false
+): HandlerThread("screenRecorderThread"), IScreenshotEngine {
+    private val imgDir: File by lazy {
+        Environment.getExternalStorageDirectory()
+            .resolve("DM-2")
+            .resolve("images")
+    }
+
     private var wt = 0.0
     private var wc = 0
     private var lastId = 0
 
-    init {
-         setup()
-     }
+    private lateinit var handler: ScreenRecorderHandler
 
-    private fun setup() {
-        // delete content from previous explorations
-        imgDir.deleteRecursively()
-        if (!imgDir.exists()) {
-            imgDir.mkdirs()
-        }
+    fun isInitialized() = ::handler.isInitialized
+
+    override fun onLooperPrepared() {
+        super.onLooperPrepared()
+
+        handler = ScreenRecorderHandler(looper, context, mediaProjectionIntent)
+        handler.sendEmptyMessage(MESSAGE_START)
+    }
+
+    override fun quit(): Boolean {
+        handler.sendEmptyMessage(MESSAGE_TEARDOWN)
+        return super.quit()
     }
 
     override fun takeScreenshot(): Bitmap? {
-        return nullableDebugT("img capture time", {
-            // UiHierarchy.getScreenShot(automation)
-            null
-        }, inMillis = true)
+        handler.currBitmap = null
+        handler.waitingScreenshot.set(true)
+        handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
+
+        while (handler.waitingScreenshot.get()) {
+            Thread.sleep(50)
+        }
+
+        return handler.currBitmap
     }
 
     /**
@@ -59,7 +81,7 @@ open class ScreenshotEngine @JvmOverloads constructor(
         return debugT("wait for screen avg = ${wt / max(1, wc)}", {
             when { // if we couldn't capture screenshots
                 bm == null -> {
-                    Log.w(TAG, "create empty image")
+                    Log.w(IEngine.TAG, "create empty image")
                     ByteArray(0)
                 }
                 delayedImgTransfer -> {
