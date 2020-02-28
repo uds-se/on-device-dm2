@@ -1,7 +1,9 @@
 package droidmate.org.accessibility.automation.screenshot
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Environment
 import android.os.HandlerThread
@@ -18,15 +20,34 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import kotlin.math.max
 
 
-class ScreenRecorder(
+class ScreenRecorder private constructor(
     private val context: Context,
     private val mediaProjectionIntent: Intent,
     private val imgQuality: Int = 10,
     private val delayedImgTransfer: Boolean = false
-): HandlerThread("screenRecorderThread"), IScreenshotEngine {
+) : HandlerThread("screenRecorderThread"), IScreenshotEngine {
+    companion object {
+        private val TAG = ScreenRecorder::class.java.simpleName
+        var instance: ScreenRecorder? = null
+            private set
+
+        fun new(context: Context,
+                mediaProjectionIntent: Intent,
+                imgQuality: Int = 10,
+                delayedImgTransfer: Boolean = false): ScreenRecorder {
+            instance = ScreenRecorder(context, mediaProjectionIntent, imgQuality, delayedImgTransfer)
+            return get()
+        }
+
+        fun get(): ScreenRecorder {
+            return instance ?: throw IllegalStateException("Screen recorder is not initialized")
+        }
+    }
+
     private val imgDir: File by lazy {
         Environment.getExternalStorageDirectory()
             .resolve("DM-2")
@@ -44,6 +65,15 @@ class ScreenRecorder(
     override fun onLooperPrepared() {
         super.onLooperPrepared()
 
+        if (delayedImgTransfer &&
+            context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w(
+                IEngine.TAG,
+                "warn we have no storage permission, we may not be able to store & fetch screenshots"
+            )
+        }
+
         handler = ScreenRecorderHandler(looper, context, mediaProjectionIntent)
         handler.sendEmptyMessage(MESSAGE_START)
     }
@@ -53,7 +83,7 @@ class ScreenRecorder(
         return super.quit()
     }
 
-    override fun takeScreenshot(): Bitmap? {
+    override fun takeScreenshot(actionNr: Int): Bitmap? {
         handler.currBitmap = null
         handler.waitingScreenshot.set(true)
         handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
@@ -62,7 +92,25 @@ class ScreenRecorder(
             Thread.sleep(50)
         }
 
-        return handler.currBitmap
+        val bitmap = handler.currBitmap?.copy(handler.currBitmap?.config, true)
+        backgroundScope.launch {
+                saveScreenshot(bitmap, actionNr.toString())
+        }
+
+        return bitmap
+    }
+
+    private fun saveScreenshot(bitmap: Bitmap?, name: String) {
+        if (bitmap != null) {
+            try {
+                FileOutputStream(imgDir.resolve("$name.png")).use { out ->
+                    // bmp is your Bitmap instance
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+            } catch (e: IOException) {
+                Log.e(TAG, "Failed to save screenshot ${e.message}", e)
+            }
+        }
     }
 
     /**

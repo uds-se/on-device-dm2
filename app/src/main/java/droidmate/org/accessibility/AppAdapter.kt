@@ -42,7 +42,7 @@ class AppAdapter(context: Context) : BaseAdapter() {
     }
 
     override fun getItem(id: Int): App {
-        return if (count < id) {
+        return if (count > id) {
             appList[id]
         } else {
             appList.last()

@@ -20,7 +20,7 @@ import droidmate.org.accessibility.automation.extensions.visibleAxis
 import droidmate.org.accessibility.automation.parsing.DisplayDimension
 import droidmate.org.accessibility.automation.parsing.DisplayedWindow
 import droidmate.org.accessibility.automation.parsing.UiHierarchy
-import droidmate.org.accessibility.automation.screenshot.ScreenshotEngine
+import droidmate.org.accessibility.automation.screenshot.IScreenshotEngine
 import droidmate.org.accessibility.automation.utils.NodeProcessor
 import droidmate.org.accessibility.automation.utils.PostProcessor
 import droidmate.org.accessibility.automation.utils.debugEnabled
@@ -35,14 +35,16 @@ import org.droidmate.deviceInterface.exploration.UiElementPropertiesI
 
 class WindowEngine(
     private val uiHierarchy: UiHierarchy,
-    //private val screenshotEngine: IScreenshotEngine,
+    private val screenshotEngine: IScreenshotEngine,
     private val keyboardEngine: IKeyboardEngine,
     private val service: AccessibilityService
-): IWindowEngine {
+) : IWindowEngine {
     companion object {
         const val osPkg = "com.android.systemui"
     }
-    private val wmService: WindowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+    private val wmService: WindowManager =
+        service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
     private var mLastDisplayDimension = DisplayDimension(0, 0)
     private var mLastWindows: List<DisplayedWindow> = emptyList()
@@ -171,7 +173,8 @@ class WindowEngine(
 
                     if (cnd) {
                         Log.d(TAG, "can reuse window ${w.windowId} ${w.pkgName} ${w.boundaries}")
-                        processedWindows[w.windowId] = this.apply { if (isExtracted()) rootNode = newW.root }
+                        processedWindows[w.windowId] =
+                            this.apply { if (isExtracted()) rootNode = newW.root }
                     } else {
                         // no guarantees after we have one mismatching window
                         canReuse = false
@@ -288,7 +291,13 @@ class WindowEngine(
                     TAG,
                     "use device root for ${window.id} ${root.packageName}[$outRect] uncovered = $uncoveredC ${window.type}"
                 )
-                return DisplayedWindow(window, uncoveredC, outRect, keyboardEngine.isKeyboard(root), root)
+                return DisplayedWindow(
+                    window,
+                    uncoveredC,
+                    outRect,
+                    keyboardEngine.isKeyboard(root),
+                    root
+                )
             }
             Log.w(
                 TAG,
@@ -302,13 +311,14 @@ class WindowEngine(
             return null
         }
         debugOut(
-            "process window ${window.id} ${window.root?.packageName ?: "no ROOT!! type=${window.type}"}",
+            "process window ${window.id} ${window.root?.packageName
+                ?: "no ROOT!! type=${window.type}"}",
             debug
         )
         return DisplayedWindow(window, uncoveredC, outRect, keyboardEngine.isKeyboard(window.root))
     }
 
-    override suspend fun fetchDeviceData(afterAction: Boolean): DeviceResponse {
+    override suspend fun fetchDeviceData(actionNr: Int, afterAction: Boolean): DeviceResponse {
         return coroutineScope {
             debugOut("start fetch execution", debugFetch)
             // waitForSync(env,afterAction)
@@ -318,7 +328,7 @@ class WindowEngine(
 
             // fetch the screenshot if available
             // could maybe use Espresso View.DecorativeView to fetch screenshot instead
-            var img = ScreenshotEngine.takeScreenshot()
+            var img = screenshotEngine.takeScreenshot(actionNr)
 
             debugOut("start element extraction", debugFetch)
 
@@ -328,11 +338,12 @@ class WindowEngine(
                     if (it == null || (!windows.isHomeScreen() && it.none(isInteractive))) {
                         //retry once for the case that AccessibilityNode tree was not yet stable
                         Log.w(
-                            TAG, "first ui extraction failed or no interactive elements were found " +
+                            TAG,
+                            "first ui extraction failed or no interactive elements were found " +
                                     "\n $it, \n ---> start a second try"
                         )
                         windows = getDisplayedWindows()
-                        img = ScreenshotEngine.takeScreenshot()
+                        img = screenshotEngine.takeScreenshot(actionNr)
                         val secondRes = uiHierarchy.fetch(windows, img)
                         Log.d(TAG, "second try resulted in ${secondRes?.size} elements")
                         secondRes
@@ -363,7 +374,7 @@ class WindowEngine(
             debugOut("started async ui extraction", debugFetch)
 
             debugOut("compute img pixels", debugFetch)
-            val imgPixels = ScreenshotEngine.getOrStoreImgPixels(img)
+            val imgPixels = screenshotEngine.getOrStoreImgPixels(img)
 
             var xml: String =
                 "TODO parse widget list on Pc if we need the XML or introduce a debug property to enable parsing" +
@@ -387,7 +398,7 @@ class WindowEngine(
         }
     }
 
-    fun getNonSystemRootNodes():List<AccessibilityNodeInfo> = getWindowRootNodes()
+    private fun getNonSystemRootNodes(): List<AccessibilityNodeInfo> = getWindowRootNodes()
         .filterNot { it.packageName == osPkg }
 
     private fun getWindowRootNodes(): List<AccessibilityNodeInfo> = getWindowRoots()
@@ -412,7 +423,10 @@ class WindowEngine(
         return roots.toList()
     }
 
-    override suspend fun<T> exec(processor: NodeProcessor, postProcessor: PostProcessor<T>): List<T> =
+    override suspend fun <T> exec(
+        processor: NodeProcessor,
+        postProcessor: PostProcessor<T>
+    ): List<T> =
         getNonSystemRootNodes().mapIndexed { _, root: AccessibilityNodeInfo ->
             processTopDown(root, processor = processor, postProcessor = postProcessor)
         }
@@ -423,7 +437,10 @@ class WindowEngine(
                 processTopDown(root, processor = processor, postProcessor = { Unit })
             }
         } catch (e: Exception) {
-            Log.w("droidmate/UiDevice", "error while processing AccessibilityNode tree ${e.localizedMessage}")
+            Log.w(
+                "droidmate/UiDevice",
+                "error while processing AccessibilityNode tree ${e.localizedMessage}"
+            )
         }
     }
 

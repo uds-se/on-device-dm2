@@ -1,11 +1,9 @@
 package droidmate.org.accessibility.automation
 
-import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Path
 import android.media.AudioManager
 import android.net.wifi.WifiManager
@@ -22,8 +20,8 @@ import droidmate.org.accessibility.automation.parsing.SelectorCondition
 import droidmate.org.accessibility.automation.parsing.UiHierarchy
 import droidmate.org.accessibility.automation.parsing.UiParser
 import droidmate.org.accessibility.automation.parsing.UiSelector
-import droidmate.org.accessibility.automation.screenshot.ScreenshotEngine
-import droidmate.org.accessibility.automation.screenshot.ScreenshotPermissionRequest
+import droidmate.org.accessibility.automation.screenshot.IScreenshotEngine
+import droidmate.org.accessibility.automation.screenshot.ScreenRecorder
 import droidmate.org.accessibility.automation.utils.api
 import droidmate.org.accessibility.automation.utils.debugEnabled
 import droidmate.org.accessibility.automation.utils.debugOut
@@ -42,22 +40,16 @@ open class AutomationEngine(
     private val service: TestService,
     /*val idleTimeout: Long = 100,*/
     private val interactiveTimeout: Long = 1000,
-    private val imgQuality: Int = 10,
-    private val delayedImgTransfer: Boolean = false,
     enablePrintouts: Boolean = true,
     private val context: Context = service.applicationContext,
     private val uiHierarchy: UiHierarchy = UiHierarchy(),
-    /*private val screenshotEngine: IScreenshotEngine = ScreenshotEngine(
-        context,
-        imgQuality,
-        delayedImgTransfer
-    ),*/
+    private val screenshotEngine: IScreenshotEngine = ScreenRecorder.get(),
     private val keyboardEngine: IKeyboardEngine = KeyboardEngine(
         context
     ),
     private val windowEngine: IWindowEngine = WindowEngine(
         uiHierarchy,
-        //screenshotEngine,
+        screenshotEngine,
         keyboardEngine,
         service
     )
@@ -84,43 +76,24 @@ open class AutomationEngine(
         debugEnabled = enablePrintouts
         measurePerformance = measurePerformance && enablePrintouts
         debugOut("initialize environment", debug)
-
-        if (delayedImgTransfer && context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "warn we have no storage permission, we may not be able to store & fetch screenshots")
-        }
     }
 
     fun run() = launch {
         setupDevice()
-        val screenshotPermissionIntent = Intent(context, ScreenshotPermissionRequest::class.java)
-        screenshotPermissionIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(screenshotPermissionIntent)
-        val mediaProjectionIntent = screenshotPermissionChannel.receive()
-        ScreenshotEngine.setIntent(mediaProjectionIntent)
-        ScreenshotEngine.setup(context, imgQuality, delayedImgTransfer)
 
-        ScreenshotEngine.takeScreenshot()
-        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
-        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
-        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
-        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
-        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
-
+        var actionNr = 0
         while (!canceled) {
             Log.d(TAG, "Continuing loop, waiting for idle")
             waitForIdle()
             Log.d(TAG, "Idle, acting")
-            act()
+            act(actionNr)
             Log.d(TAG, "Acted, repeating loop")
+
+            actionNr += 1
         }
     }
 
-    private suspend fun act() {
+    private suspend fun act(actionNr: Int) {
         val lastRotation = lastDisplayDimension
         Log.d(TAG, lastRotation.toString())
         val displayRotation = getDisplayRotation()
@@ -133,32 +106,36 @@ open class AutomationEngine(
             .joinToString { it.toString() })
 
         if (displayedWindows.none {
-                it.w.pkgName.contains("ch.bailu.aat")
+                it.w.pkgName.contains(AutomationEngine.targetPackage)
             }) {
-            launchApp("ch.bailu.aat", 500)
+            launchApp(AutomationEngine.targetPackage, 500)
         } else {
-            val deviceData = windowEngine.fetchDeviceData()
-            val widgets = deviceData.widgets
-            val target = widgets
-                .filter { it.clickable }
-                .random(random)
-            Log.w(TAG, "target: $target")
-            //clickEvent(ClickEvent(target.idHash))
-            //longClickEvent(LongClickEvent(target.idHash))
-            //minimizeMaximize()
-            //tick(Tick(target.idHash,
-            //    target.boundaries.center.first,
-            //    target.boundaries.center.second))
-            //pressBack()
-            //pressHome()
-            //pressEnter()
+            measureTimeMillis {
+                val deviceData = windowEngine.fetchDeviceData(actionNr)
+                val widgets = deviceData.widgets
+                val target = widgets
+                    .filter { it.clickable }
+                    .random(random)
+                Log.w(TAG, "target: $target")
+                clickEvent(ClickEvent(target.idHash))
+                //longClickEvent(LongClickEvent(target.idHash))
+                //minimizeMaximize()
+                //tick(Tick(target.idHash,
+                //    target.boundaries.center.first,
+                //    target.boundaries.center.second))
+                //pressBack()
+                //pressHome()
+                //pressEnter()
 
-            val appWindow = displayedWindows.first {
+                /*val appWindow = displayedWindows.first {
                 it.w.pkgName.contains("ch.bailu.aat")
             }
             val x = random.nextInt(appWindow.bounds.width())
             val y = random.nextInt(appWindow.bounds.height())
-            click(Click(x, y))
+            click(Click(x, y))*/
+            }.let {
+                Log.i("AAA", "Took $it ms to act")
+            }
         }
     }
 
@@ -189,7 +166,7 @@ open class AutomationEngine(
             .getLaunchIntentForPackage(appPackageName)
 
         // Clear out any previous instances
-        intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
         // Update environment
         launchedMainActivity = try {

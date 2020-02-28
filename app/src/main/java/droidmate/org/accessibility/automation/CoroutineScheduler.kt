@@ -14,7 +14,7 @@ open class CoroutineScheduler(
     private val accessibilityEventChannel: Channel<Long>,
     private val idleNotificationChannel: Channel<Long>,
     private val waitInterval: Long = 200L,
-    private val timeout: Long = 1000L
+    private val timeout: Long = 500L
 ): CoroutineScope {
     companion object {
         private val TAG = CoroutineScheduler::class.java.simpleName

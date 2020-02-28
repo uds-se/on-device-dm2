@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
             throw RuntimeException("Unable to obtain screen recording permission")
         }
 
-        val screenRecorder = ScreenRecorder(this, mediaProjectionIntent)
+        val screenRecorder = ScreenRecorder.new(this, mediaProjectionIntent)
         screenRecorder.start()
 
         while (!screenRecorder.isInitialized()) {
