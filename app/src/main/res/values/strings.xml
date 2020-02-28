@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Accessibility</string>
+    <string name="title_activity_screenshot_permission_request">ScreenshotPermissionRequest</string>
 </resources>
