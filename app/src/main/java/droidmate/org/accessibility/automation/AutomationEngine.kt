@@ -107,7 +107,7 @@ open class AutomationEngine(
             }) {
             launchApp(AutomationEngine.targetPackage, 500)
         } else {
-            measureTimeMillis {
+            debugT("Act", {
                 val deviceData = windowEngine.fetchDeviceData(actionNr)
                 val widgets = deviceData.widgets
                 val target = widgets
@@ -130,9 +130,7 @@ open class AutomationEngine(
             val x = random.nextInt(appWindow.bounds.width())
             val y = random.nextInt(appWindow.bounds.height())
             click(Click(x, y))*/
-            }.let {
-                Log.i(TIME, "Took $it ms to act")
-            }
+            }, inMillis = true)
         }
     }
 
@@ -200,16 +198,14 @@ open class AutomationEngine(
         pressRecentApps()
         // Cannot use wait for changes because it crashes UIAutomator
         //delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
-        measureTimeMillis { waitForIdle() }
-            .let { Log.d(TAG, "waited $it millis for IDLE") }
+        debugT("waitForIdle", { waitForIdle() }, inMillis = true)
 
         for (i in (0 until 10)) {
             pressRecentApps()
 
             // Cannot use wait for changes because it waits some interact-able element
             //delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
-            measureTimeMillis { waitForIdle() }
-                .let { Log.d(TAG, "waited $it millis for IDLE") }
+            debugT("waitForIdle", { waitForIdle() }, inMillis = true)
 
             Log.d(TAG, "Current package name $activeAppPackage")
             if (activeAppPackage == currentPackage)

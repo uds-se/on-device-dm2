@@ -9,19 +9,18 @@ import android.os.Environment
 import android.os.HandlerThread
 import android.util.Log
 import droidmate.org.accessibility.automation.IEngine
+import droidmate.org.accessibility.automation.IEngine.Companion.TAG
 import droidmate.org.accessibility.automation.extensions.compress
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_START
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TAKE_SCREENSHOT
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TEARDOWN
-import droidmate.org.accessibility.automation.utils.TIME
-import droidmate.org.accessibility.automation.utils.backgroundScope
-import droidmate.org.accessibility.automation.utils.debugOut
-import droidmate.org.accessibility.automation.utils.debugT
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import droidmate.org.accessibility.automation.utils.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 import kotlin.system.measureTimeMillis
 
@@ -31,7 +30,7 @@ class ScreenRecorder private constructor(
     private val mediaProjectionIntent: Intent,
     private val imgQuality: Int = 10,
     private val delayedImgTransfer: Boolean = false
-) : HandlerThread("screenRecorderThread"), IScreenshotEngine {
+) : HandlerThread("screenRecorderThread"), IScreenshotEngine, CoroutineScope {
     companion object {
         private val TAG = ScreenRecorder::class.java.simpleName
         var instance: ScreenRecorder? = null
@@ -52,6 +51,12 @@ class ScreenRecorder private constructor(
             return instance ?: throw IllegalStateException("Screen recorder is not initialized")
         }
     }
+
+    private var job: Job = Job()
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Default + job
+
+    private val bitmapChannel = Channel<Bitmap?>()
 
     private val imgDir: File by lazy {
         Environment.getExternalStorageDirectory()
@@ -79,7 +84,7 @@ class ScreenRecorder private constructor(
             )
         }
 
-        handler = ScreenRecorderHandler(looper, context, mediaProjectionIntent)
+        handler = ScreenRecorderHandler(looper, bitmapChannel, context, mediaProjectionIntent)
         handler.sendEmptyMessage(MESSAGE_START)
     }
 
@@ -89,24 +94,21 @@ class ScreenRecorder private constructor(
     }
 
     override fun takeScreenshot(actionNr: Int): Bitmap? {
-        measureTimeMillis {
-            handler.currBitmap = null
-            handler.waitingScreenshot.set(true)
+        return nullableDebugT("take screenshot", {
+            var bitmap: Bitmap? = null
             handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
+            runBlocking {
+                bitmap = bitmapChannel.receive()
 
-            while (handler.waitingScreenshot.get()) {
-                Thread.sleep(10)
+                backgroundScope.launch {
+                    debugT("save screenshot to disk", {
+                        saveScreenshot(bitmap, actionNr.toString())
+                    }, inMillis = true)
+                }
+
+                bitmap
             }
-        }.let { Log.d(TIME, "waited $it millis for screenshot") }
-
-        val bitmap = handler.currBitmap?.copy(handler.currBitmap?.config, true)
-        backgroundScope.launch {
-            measureTimeMillis {
-                saveScreenshot(bitmap, actionNr.toString())
-            }.let { Log.d(TIME, "waited $it millis to save screenshot to disk screenshot") }
-        }
-
-        return bitmap
+        }, inMillis = true)
     }
 
     private fun saveScreenshot(bitmap: Bitmap?, name: String) {
