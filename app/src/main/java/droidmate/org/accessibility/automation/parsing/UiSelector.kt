@@ -1,4 +1,4 @@
-package droidmate.org.accessibility.parsing
+package droidmate.org.accessibility.automation.parsing
 
 import android.view.accessibility.AccessibilityNodeInfo
 

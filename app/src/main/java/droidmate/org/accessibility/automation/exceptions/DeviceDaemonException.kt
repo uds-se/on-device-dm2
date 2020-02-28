@@ -23,7 +23,7 @@
 //
 // web: www.droidmate.org
 
-package droidmate.org.accessibility.exceptions
+package droidmate.org.accessibility.automation.exceptions
 
 import org.droidmate.deviceInterface.exploration.DeviceResponse
 

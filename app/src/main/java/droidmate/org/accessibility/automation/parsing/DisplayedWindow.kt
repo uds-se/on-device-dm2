@@ -1,12 +1,12 @@
-package droidmate.org.accessibility.parsing
+package droidmate.org.accessibility.automation.parsing
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
-import droidmate.org.accessibility.extensions.visibleAxis
-import droidmate.org.accessibility.utils.api
-import droidmate.org.accessibility.utils.debugOut
-import droidmate.org.accessibility.utils.visibleOuterBounds
+import droidmate.org.accessibility.automation.extensions.visibleAxis
+import droidmate.org.accessibility.automation.utils.api
+import droidmate.org.accessibility.automation.utils.debugOut
+import droidmate.org.accessibility.automation.utils.visibleOuterBounds
 import org.droidmate.deviceInterface.exploration.AppWindow
 
 private const val debug = false

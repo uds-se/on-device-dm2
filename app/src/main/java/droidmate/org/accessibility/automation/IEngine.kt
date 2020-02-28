@@ -1,4 +1,4 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 interface IEngine {
     companion object {

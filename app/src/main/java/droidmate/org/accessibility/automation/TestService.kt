@@ -1,11 +1,10 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
-import droidmate.org.accessibility.utils.backgroundScope
+import droidmate.org.accessibility.automation.utils.backgroundScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -16,13 +15,21 @@ open class TestService : AccessibilityService() {
 
     private val accessibilityChannel = Channel<Long>()
     private val idleNotificationChannel = Channel<Long>()
-    private val scheduler = CoroutineScheduler(accessibilityChannel, idleNotificationChannel)
+    private val scheduler =
+        CoroutineScheduler(
+            accessibilityChannel,
+            idleNotificationChannel
+        )
     private val waitingForIdle = AtomicBoolean(false)
     private lateinit var automationEngine: AutomationEngine
 
     override fun onServiceConnected() {
         Log.i(TAG, "Service connected")
-        automationEngine = AutomationEngine(idleNotificationChannel, this)
+        automationEngine =
+            AutomationEngine(
+                idleNotificationChannel,
+                this
+            )
         automationEngine.run()
         scheduler.start()
     }

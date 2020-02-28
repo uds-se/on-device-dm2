@@ -9,8 +9,8 @@ import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.AutomationEngine
-import droidmate.org.accessibility.extensions.compress
+import droidmate.org.accessibility.automation.AutomationEngine
+import droidmate.org.accessibility.automation.extensions.compress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -37,8 +37,8 @@ import org.droidmate.deviceInterface.exploration.UiElementPropertiesI
 import org.droidmate.uiautomator2daemon.uiautomatorExtensions.AutomationEnvironment
 import org.droidmate.uiautomator2daemon.uiautomatorExtensions.DisplayedWindow
 import org.droidmate.uiautomator2daemon.uiautomatorExtensions.SelectorCondition
-import droidmate.org.accessibility.parsing.UiHierarchy
-import droidmate.org.accessibility.parsing.UiParser.Companion.computeIdHash
+import droidmate.org.accessibility.automation.parsing.UiHierarchy
+import droidmate.org.accessibility.automation.parsing.UiParser.Companion.computeIdHash
 import org.droidmate.uiautomator2daemon.uiautomatorExtensions.UiSelector.actableAppElem
 import org.droidmate.uiautomator2daemon.uiautomatorExtensions.UiSelector.isWebView
 import org.droidmate.uiautomator2daemon.uiautomatorExtensions.backgroundScope

@@ -1,18 +1,18 @@
-package droidmate.org.accessibility.parsing
+package droidmate.org.accessibility.automation.parsing
 
 import android.graphics.Bitmap
 import android.util.Log
 import android.util.Xml
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.AutomationEngine
-import droidmate.org.accessibility.IWindowEngine
-import droidmate.org.accessibility.extensions.isValid
-import droidmate.org.accessibility.utils.NodeProcessor
-import droidmate.org.accessibility.utils.addAttribute
-import droidmate.org.accessibility.utils.debugOut
-import droidmate.org.accessibility.utils.debugT
-import droidmate.org.accessibility.utils.processTopDown
-import droidmate.org.accessibility.utils.visibleOuterBounds
+import droidmate.org.accessibility.automation.AutomationEngine
+import droidmate.org.accessibility.automation.IWindowEngine
+import droidmate.org.accessibility.automation.extensions.isValid
+import droidmate.org.accessibility.automation.utils.NodeProcessor
+import droidmate.org.accessibility.automation.utils.addAttribute
+import droidmate.org.accessibility.automation.utils.debugOut
+import droidmate.org.accessibility.automation.utils.debugT
+import droidmate.org.accessibility.automation.utils.processTopDown
+import droidmate.org.accessibility.automation.utils.visibleOuterBounds
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -120,10 +120,10 @@ class UiHierarchy : UiParser() {
 
 	@JvmOverloads
 	suspend fun findAndPerform(
-		engine: IWindowEngine,
-		cond: SelectorCondition,
-		retry: Boolean = true,
-		action: suspend (AccessibilityNodeInfo) -> Boolean
+        engine: IWindowEngine,
+        cond: SelectorCondition,
+        retry: Boolean = true,
+        action: suspend (AccessibilityNodeInfo) -> Boolean
 	): Boolean {
 		return findAndPerform(engine.getAppRootNodes(), cond, retry, action)
 	}

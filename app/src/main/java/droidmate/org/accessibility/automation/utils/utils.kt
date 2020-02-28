@@ -1,10 +1,10 @@
-package droidmate.org.accessibility.utils
+package droidmate.org.accessibility.automation.utils
 
 import android.graphics.Rect
 import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.parsing.SiblingNodeComparator
+import droidmate.org.accessibility.automation.parsing.SiblingNodeComparator
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

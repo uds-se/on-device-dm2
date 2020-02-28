@@ -1,7 +1,7 @@
-package droidmate.org.accessibility.extensions
+package droidmate.org.accessibility.automation.extensions
 
 import android.graphics.Rect
-import droidmate.org.accessibility.utils.debugOut
+import droidmate.org.accessibility.automation.utils.debugOut
 import org.droidmate.deviceInterface.exploration.Rectangle
 import java.util.LinkedList
 import kotlin.math.abs

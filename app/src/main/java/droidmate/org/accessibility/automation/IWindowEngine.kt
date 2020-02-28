@@ -1,10 +1,10 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.parsing.DisplayDimension
-import droidmate.org.accessibility.parsing.DisplayedWindow
-import droidmate.org.accessibility.utils.NodeProcessor
-import droidmate.org.accessibility.utils.PostProcessor
+import droidmate.org.accessibility.automation.parsing.DisplayDimension
+import droidmate.org.accessibility.automation.parsing.DisplayedWindow
+import droidmate.org.accessibility.automation.utils.NodeProcessor
+import droidmate.org.accessibility.automation.utils.PostProcessor
 import org.droidmate.deviceInterface.exploration.DeviceResponse
 
 interface IWindowEngine: IEngine {

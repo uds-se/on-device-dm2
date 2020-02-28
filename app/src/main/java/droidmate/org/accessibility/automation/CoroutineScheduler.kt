@@ -1,4 +1,4 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.os.SystemClock
 import android.util.Log
@@ -51,7 +51,8 @@ open class CoroutineScheduler(
     private suspend fun runListener() {
         while (!isCanceled) {
             val timeStamp = accessibilityEventChannel.receive()
-            Log.d(TAG, "Accessibility event with time $timeStamp received. " +
+            Log.d(
+                TAG, "Accessibility event with time $timeStamp received. " +
                     "Current timestamp = ${SystemClock.uptimeMillis()}")
             lastTimestamp.set(SystemClock.uptimeMillis())
         }

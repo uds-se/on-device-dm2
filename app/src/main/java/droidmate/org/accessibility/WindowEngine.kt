@@ -1,6 +1,5 @@
 package droidmate.org.accessibility
 
-import android.R.attr.keycode
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.graphics.Point
@@ -9,22 +8,25 @@ import android.util.Log
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
-import droidmate.org.accessibility.IEngine.Companion.TAG
-import droidmate.org.accessibility.IEngine.Companion.debug
-import droidmate.org.accessibility.IEngine.Companion.debugFetch
-import droidmate.org.accessibility.extensions.getBounds
-import droidmate.org.accessibility.extensions.invalid
-import droidmate.org.accessibility.extensions.isHomeScreen
-import droidmate.org.accessibility.extensions.visibleAxis
-import droidmate.org.accessibility.parsing.DisplayDimension
-import droidmate.org.accessibility.parsing.DisplayedWindow
-import droidmate.org.accessibility.parsing.UiHierarchy
-import droidmate.org.accessibility.utils.NodeProcessor
-import droidmate.org.accessibility.utils.PostProcessor
-import droidmate.org.accessibility.utils.debugEnabled
-import droidmate.org.accessibility.utils.debugOut
-import droidmate.org.accessibility.utils.debugT
-import droidmate.org.accessibility.utils.processTopDown
+import droidmate.org.accessibility.automation.IEngine.Companion.TAG
+import droidmate.org.accessibility.automation.IEngine.Companion.debug
+import droidmate.org.accessibility.automation.IEngine.Companion.debugFetch
+import droidmate.org.accessibility.automation.IKeyboardEngine
+import droidmate.org.accessibility.automation.IWindowEngine
+import droidmate.org.accessibility.automation.extensions.getBounds
+import droidmate.org.accessibility.automation.extensions.invalid
+import droidmate.org.accessibility.automation.extensions.isHomeScreen
+import droidmate.org.accessibility.automation.extensions.visibleAxis
+import droidmate.org.accessibility.automation.parsing.DisplayDimension
+import droidmate.org.accessibility.automation.parsing.DisplayedWindow
+import droidmate.org.accessibility.automation.parsing.UiHierarchy
+import droidmate.org.accessibility.automation.screenshot.ScreenshotEngine
+import droidmate.org.accessibility.automation.utils.NodeProcessor
+import droidmate.org.accessibility.automation.utils.PostProcessor
+import droidmate.org.accessibility.automation.utils.debugEnabled
+import droidmate.org.accessibility.automation.utils.debugOut
+import droidmate.org.accessibility.automation.utils.debugT
+import droidmate.org.accessibility.automation.utils.processTopDown
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import org.droidmate.deviceInterface.exploration.DeviceResponse
@@ -33,7 +35,7 @@ import org.droidmate.deviceInterface.exploration.UiElementPropertiesI
 
 class WindowEngine(
     private val uiHierarchy: UiHierarchy,
-    private val screenshotEngine: IScreenshotEngine,
+    //private val screenshotEngine: IScreenshotEngine,
     private val keyboardEngine: IKeyboardEngine,
     private val service: AccessibilityService
 ): IWindowEngine {
@@ -316,7 +318,7 @@ class WindowEngine(
 
             // fetch the screenshot if available
             // could maybe use Espresso View.DecorativeView to fetch screenshot instead
-            var img = screenshotEngine.takeScreenshot()
+            var img = ScreenshotEngine.takeScreenshot()
 
             debugOut("start element extraction", debugFetch)
 
@@ -330,7 +332,7 @@ class WindowEngine(
                                     "\n $it, \n ---> start a second try"
                         )
                         windows = getDisplayedWindows()
-                        img = screenshotEngine.takeScreenshot()
+                        img = ScreenshotEngine.takeScreenshot()
                         val secondRes = uiHierarchy.fetch(windows, img)
                         Log.d(TAG, "second try resulted in ${secondRes?.size} elements")
                         secondRes
@@ -361,7 +363,7 @@ class WindowEngine(
             debugOut("started async ui extraction", debugFetch)
 
             debugOut("compute img pixels", debugFetch)
-            val imgPixels = screenshotEngine.getOrStoreImgPixels(img)
+            val imgPixels = ScreenshotEngine.getOrStoreImgPixels(img)
 
             var xml: String =
                 "TODO parse widget list on Pc if we need the XML or introduce a debug property to enable parsing" +

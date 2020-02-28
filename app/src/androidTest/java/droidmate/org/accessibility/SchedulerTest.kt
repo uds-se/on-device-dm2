@@ -2,7 +2,8 @@ package droidmate.org.accessibility
 
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import droidmate.org.accessibility.utils.backgroundScope
+import droidmate.org.accessibility.automation.Scheduler
+import droidmate.org.accessibility.automation.utils.backgroundScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -24,9 +25,17 @@ class SchedulerTest {
         val mutex = Mutex(true)
         val notificationChannel = Channel<Boolean>()
         val scheduler = if (timeout) {
-            Scheduler(notificationChannel, 500, 200)
+            Scheduler(
+                notificationChannel,
+                500,
+                200
+            )
         } else {
-            Scheduler(notificationChannel, 200, 500)
+            Scheduler(
+                notificationChannel,
+                200,
+                500
+            )
         }
         backgroundScope.launch {
             val elapsedTime = measureTimeMillis {

@@ -1,8 +1,8 @@
-package droidmate.org.accessibility.parsing
+package droidmate.org.accessibility.automation.parsing
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.utils.api
+import droidmate.org.accessibility.automation.utils.api
 
 object SiblingNodeComparator: Comparator<Pair<Int, AccessibilityNodeInfo>> {
     private var parentBounds: Rect = Rect()

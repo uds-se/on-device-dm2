@@ -1,14 +1,15 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.content.Context
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
-import droidmate.org.accessibility.IEngine.Companion.debug
-import droidmate.org.accessibility.extensions.getBounds
-import droidmate.org.accessibility.parsing.SelectorCondition
-import droidmate.org.accessibility.utils.debugOut
+import droidmate.org.accessibility.automation.IEngine.Companion.debug
+import droidmate.org.accessibility.automation.extensions.getBounds
+import droidmate.org.accessibility.automation.parsing.SelectorCondition
+import droidmate.org.accessibility.automation.utils.debugOut
 
-class KeyboardEngine(private val context: Context): IKeyboardEngine {
+class KeyboardEngine(private val context: Context):
+    IKeyboardEngine {
     private val keyboardPackages by lazy { computeKeyboardPackages() }
 
     override fun isKeyboard(node: AccessibilityNodeInfo?) : Boolean {

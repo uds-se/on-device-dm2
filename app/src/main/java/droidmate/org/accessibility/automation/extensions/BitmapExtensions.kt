@@ -1,10 +1,10 @@
-package droidmate.org.accessibility.extensions
+package droidmate.org.accessibility.automation.extensions
 
 import android.graphics.Bitmap
 import android.util.Log
-import droidmate.org.accessibility.parsing.DisplayedWindow
-import droidmate.org.accessibility.utils.TAG
-import droidmate.org.accessibility.utils.debugT
+import droidmate.org.accessibility.automation.parsing.DisplayedWindow
+import droidmate.org.accessibility.automation.utils.TAG
+import droidmate.org.accessibility.automation.utils.debugT
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max

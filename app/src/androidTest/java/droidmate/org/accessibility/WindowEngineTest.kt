@@ -6,10 +6,12 @@ import android.view.Surface
 import android.view.WindowManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import droidmate.org.accessibility.parsing.UiHierarchy
-import droidmate.org.accessibility.utils.backgroundScope
+import droidmate.org.accessibility.automation.IKeyboardEngine
+import droidmate.org.accessibility.automation.KeyboardEngine
+import droidmate.org.accessibility.automation.parsing.UiHierarchy
+import droidmate.org.accessibility.automation.screenshot.IScreenshotEngine
+import droidmate.org.accessibility.automation.screenshot.ScreenshotEngine
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -39,7 +41,11 @@ class WindowEngineTest {
     private val uiHierarchy: UiHierarchy by lazy { UiHierarchy() }
     private val screenshotEngine: IScreenshotEngine = Mockito.mock(ScreenshotEngine::class.java)
     //private val screenshotEngine: IScreenshotEngine = mock<ScreenshotEngine>()
-    private val keyboardEngine: IKeyboardEngine by lazy { KeyboardEngine(context) }
+    private val keyboardEngine: IKeyboardEngine by lazy {
+        KeyboardEngine(
+            context
+        )
+    }
     private val windowEngine = WindowEngine(uiHierarchy, screenshotEngine, keyboardEngine, service)
 
     @Test

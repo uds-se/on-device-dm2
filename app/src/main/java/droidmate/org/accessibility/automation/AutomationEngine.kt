@@ -1,9 +1,10 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Path
 import android.media.AudioManager
@@ -13,17 +14,20 @@ import android.os.RemoteException
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.IEngine.Companion.TAG
-import droidmate.org.accessibility.IEngine.Companion.debug
-import droidmate.org.accessibility.IEngine.Companion.debugFetch
-import droidmate.org.accessibility.parsing.SelectorCondition
-import droidmate.org.accessibility.parsing.UiHierarchy
-import droidmate.org.accessibility.parsing.UiParser
-import droidmate.org.accessibility.parsing.UiSelector
-import droidmate.org.accessibility.utils.api
-import droidmate.org.accessibility.utils.debugEnabled
-import droidmate.org.accessibility.utils.debugOut
-import droidmate.org.accessibility.utils.measurePerformance
+import droidmate.org.accessibility.*
+import droidmate.org.accessibility.automation.IEngine.Companion.TAG
+import droidmate.org.accessibility.automation.IEngine.Companion.debug
+import droidmate.org.accessibility.automation.IEngine.Companion.debugFetch
+import droidmate.org.accessibility.automation.parsing.SelectorCondition
+import droidmate.org.accessibility.automation.parsing.UiHierarchy
+import droidmate.org.accessibility.automation.parsing.UiParser
+import droidmate.org.accessibility.automation.parsing.UiSelector
+import droidmate.org.accessibility.automation.screenshot.ScreenshotEngine
+import droidmate.org.accessibility.automation.screenshot.ScreenshotPermissionRequest
+import droidmate.org.accessibility.automation.utils.api
+import droidmate.org.accessibility.automation.utils.debugEnabled
+import droidmate.org.accessibility.automation.utils.debugOut
+import droidmate.org.accessibility.automation.utils.measurePerformance
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.droidmate.deviceInterface.exploration.*
@@ -38,24 +42,35 @@ open class AutomationEngine(
     private val service: TestService,
     /*val idleTimeout: Long = 100,*/
     private val interactiveTimeout: Long = 1000,
-    imgQuality: Int = 10,
-    delayedImgTransfer: Boolean = false,
+    private val imgQuality: Int = 10,
+    private val delayedImgTransfer: Boolean = false,
     enablePrintouts: Boolean = true,
     private val context: Context = service.applicationContext,
     private val uiHierarchy: UiHierarchy = UiHierarchy(),
-    private val screenshotEngine: IScreenshotEngine = ScreenshotEngine(imgQuality, delayedImgTransfer),
-    private val keyboardEngine: IKeyboardEngine = KeyboardEngine(context),
+    /*private val screenshotEngine: IScreenshotEngine = ScreenshotEngine(
+        context,
+        imgQuality,
+        delayedImgTransfer
+    ),*/
+    private val keyboardEngine: IKeyboardEngine = KeyboardEngine(
+        context
+    ),
     private val windowEngine: IWindowEngine = WindowEngine(
         uiHierarchy,
-        screenshotEngine,
+        //screenshotEngine,
         keyboardEngine,
         service
     )
 ) : IEngine,
     IKeyboardEngine by keyboardEngine,
     IWindowEngine by windowEngine,
-    IScreenshotEngine by screenshotEngine,
+    //IScreenshotEngine by screenshotEngine,
     CoroutineScope {
+    companion object {
+        var targetPackage = ""
+        val screenshotPermissionChannel = Channel<Intent>()
+    }
+
     var canceled = false
 
     private val random = Random(0)
@@ -76,16 +91,32 @@ open class AutomationEngine(
     }
 
     fun run() = launch {
-        Log.e(TAG, "Launching")
         setupDevice()
-        Log.e(TAG, "Device setup")
+        val screenshotPermissionIntent = Intent(context, ScreenshotPermissionRequest::class.java)
+        screenshotPermissionIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(screenshotPermissionIntent)
+        val mediaProjectionIntent = screenshotPermissionChannel.receive()
+        ScreenshotEngine.setIntent(mediaProjectionIntent)
+        ScreenshotEngine.setup(context, imgQuality, delayedImgTransfer)
+
+        ScreenshotEngine.takeScreenshot()
+        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
+        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
+        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
+        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
+        measureTimeMillis { ScreenshotEngine.takeScreenshot() }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
 
         while (!canceled) {
-            Log.e(TAG, "Continuing loop, waiting for idle")
+            Log.d(TAG, "Continuing loop, waiting for idle")
             waitForIdle()
-            Log.e(TAG, "Idle, acting")
+            Log.d(TAG, "Idle, acting")
             act()
-            Log.e(TAG, "Acted, repeating loop")
+            Log.d(TAG, "Acted, repeating loop")
         }
     }
 
@@ -120,14 +151,14 @@ open class AutomationEngine(
             //    target.boundaries.center.second))
             //pressBack()
             //pressHome()
-            pressEnter()
+            //pressEnter()
 
-            /*val appWindow = displayedWindows.first {
+            val appWindow = displayedWindows.first {
                 it.w.pkgName.contains("ch.bailu.aat")
             }
             val x = random.nextInt(appWindow.bounds.width())
             val y = random.nextInt(appWindow.bounds.height())
-            click(Click(x, y))*/
+            click(Click(x, y))
         }
     }
 

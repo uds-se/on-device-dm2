@@ -1,7 +1,8 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.parsing.SelectorCondition
+import droidmate.org.accessibility.automation.IEngine
+import droidmate.org.accessibility.automation.parsing.SelectorCondition
 
 interface IKeyboardEngine: IEngine {
     fun isKeyboard(node: AccessibilityNodeInfo?) : Boolean

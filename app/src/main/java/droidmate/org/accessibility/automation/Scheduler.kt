@@ -1,4 +1,4 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.os.Handler
 import android.os.Looper

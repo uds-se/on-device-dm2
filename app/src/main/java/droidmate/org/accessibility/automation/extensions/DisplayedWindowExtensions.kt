@@ -1,6 +1,6 @@
-package droidmate.org.accessibility.extensions
+package droidmate.org.accessibility.automation.extensions
 
-import droidmate.org.accessibility.parsing.DisplayedWindow
+import droidmate.org.accessibility.automation.parsing.DisplayedWindow
 
 fun List<DisplayedWindow>.isHomeScreen() = count { it.isApp() }.let { nAppW ->
     nAppW == 0 || (nAppW == 1 && any { it.isLauncher && it.isApp() })

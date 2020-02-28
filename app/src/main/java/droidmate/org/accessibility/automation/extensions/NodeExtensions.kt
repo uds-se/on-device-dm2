@@ -1,4 +1,4 @@
-package droidmate.org.accessibility.extensions
+package droidmate.org.accessibility.automation.extensions
 
 import android.annotation.SuppressLint
 import android.graphics.Rect

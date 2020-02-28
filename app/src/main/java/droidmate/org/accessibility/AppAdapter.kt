@@ -1,6 +1,9 @@
 package droidmate.org.accessibility
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager.GET_META_DATA
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,8 +11,31 @@ import android.widget.BaseAdapter
 import android.widget.ImageView
 import android.widget.TextView
 
-class AppAdapter(context: Context, private val appList: List<App>) : BaseAdapter() {
+class AppAdapter(context: Context) : BaseAdapter() {
     private val layoutInflater = LayoutInflater.from(context)
+    private val appList: List<App> by lazy {
+        val packageManager = context.packageManager
+        val packages = packageManager.getInstalledPackages(GET_META_DATA)
+        packages
+            .filterNot { it.isSystemPackage() || it.isMyself() }
+            .map {
+                App(
+                    it.applicationInfo.loadLabel(packageManager).toString(),
+                    it.applicationInfo.packageName,
+                    it.applicationInfo.loadIcon(packageManager)
+                )
+            }
+    }
+
+    private fun PackageInfo.isSystemPackage(): Boolean {
+        return applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0
+    }
+
+    private fun PackageInfo.isMyself(): Boolean {
+        val packageName = MainActivity::class.java.`package`?.name
+            ?: throw IllegalStateException("Unable to determine DM-2 package")
+        return applicationInfo.packageName.startsWith(packageName)
+    }
 
     override fun getCount(): Int {
         return appList.size

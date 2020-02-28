@@ -1,4 +1,4 @@
-package droidmate.org.accessibility.utils
+package droidmate.org.accessibility.automation.utils
 
 import android.util.Log
 import org.droidmate.deviceInterface.DeviceConstants
