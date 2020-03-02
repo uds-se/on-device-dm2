@@ -14,6 +14,7 @@ import org.xmlpull.v1.XmlSerializer
 
 const val TAG = "droidmate/Accessibility"
 val backgroundScope = CoroutineScope(Dispatchers.Default + CoroutineName("background") + Job())   //same dispatcher as GlobalScope.launch
+val ioScope = CoroutineScope(Dispatchers.IO + CoroutineName("background") + Job())   //same dispatcher as GlobalScope.launch
 
 val api = Build.VERSION.SDK_INT
 
