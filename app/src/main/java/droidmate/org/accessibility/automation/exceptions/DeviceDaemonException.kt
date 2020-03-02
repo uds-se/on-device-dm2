@@ -30,18 +30,24 @@ import org.droidmate.deviceInterface.exploration.DeviceResponse
 @Suppress("unused")
 class DeviceDaemonException : Throwable {
 
-	constructor() : super()
+    constructor() : super()
 
-	constructor(arg0: String, arg1: Throwable) : super(arg0, arg1)
+    constructor(arg0: String, arg1: Throwable) : super(arg0, arg1)
 
-	constructor(arg0: String) : super(arg0)
+    constructor(arg0: String) : super(arg0)
 
-	constructor(arg0: Throwable) : super(arg0)
-
+    constructor(arg0: Throwable) : super(arg0)
 }
 
-private val error = DeviceResponse.create(isSuccessful = false, capturedScreen = false,
-	appWindows = emptyList(), isHomeScreen = false, uiHierarchy = emptyList(), launchedActivity = "",
-	screenshot = ByteArray(0), uiDump = "ERROR in device controlling app")
+private val error = DeviceResponse.create(
+    isSuccessful = false,
+    capturedScreen = false,
+    appWindows = emptyList(),
+    isHomeScreen = false,
+    uiHierarchy = emptyList(),
+    launchedActivity = "",
+    screenshot = ByteArray(0),
+    uiDump = "ERROR in device controlling app"
+)
 
-val ErrorResponse:(Throwable?) ->DeviceResponse = {error.apply { throwable = it }}
+val ErrorResponse: (Throwable?) -> DeviceResponse = { error.apply { throwable = it } }

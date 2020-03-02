@@ -9,21 +9,25 @@ import android.os.Environment
 import android.os.HandlerThread
 import android.util.Log
 import droidmate.org.accessibility.automation.IEngine
-import droidmate.org.accessibility.automation.IEngine.Companion.TAG
 import droidmate.org.accessibility.automation.extensions.compress
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_START
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TAKE_SCREENSHOT
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TEARDOWN
-import droidmate.org.accessibility.automation.utils.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
+import droidmate.org.accessibility.automation.utils.debugOut
+import droidmate.org.accessibility.automation.utils.debugT
+import droidmate.org.accessibility.automation.utils.ioScope
+import droidmate.org.accessibility.automation.utils.nullableDebugT
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
-import kotlin.system.measureTimeMillis
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class ScreenRecorder private constructor(
     private val context: Context,
@@ -100,7 +104,7 @@ class ScreenRecorder private constructor(
             runBlocking {
                 bitmap = bitmapChannel.receive()
 
-                backgroundScope.launch {
+                ioScope.launch {
                     debugT("save screenshot to disk", {
                         saveScreenshot(bitmap, actionNr.toString())
                     }, inMillis = true)
@@ -144,7 +148,7 @@ class ScreenRecorder private constructor(
                     ByteArray(0)
                 }
                 delayedImgTransfer -> {
-                    backgroundScope.launch(Dispatchers.IO) {
+                    ioScope.launch(Dispatchers.IO) {
                         // we could use an actor getting id and bitmap via channel, instead of starting another coroutine each time
                         debugOut("create screenshot for action $actionId")
                         val os = FileOutputStream(imgDir.absolutePath + "/" + actionId + ".jpg")

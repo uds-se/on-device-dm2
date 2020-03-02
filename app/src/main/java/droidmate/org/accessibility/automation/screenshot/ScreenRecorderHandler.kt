@@ -18,20 +18,19 @@ import android.os.Message
 import android.util.Log
 import android.view.WindowManager
 import droidmate.org.accessibility.automation.IEngine
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.CoroutineContext
 
 class ScreenRecorderHandler(
     looper: Looper,
     private val bitmapChannel: Channel<Bitmap?>,
     private val context: Context,
     private val mediaProjectionIntent: Intent
-): Handler(looper), CoroutineScope {
+) : Handler(looper), CoroutineScope {
     companion object {
         private const val RECORDING_NAME = "screencap"
         private const val VIRTUAL_DISPLAY_FLAGS =
@@ -49,11 +48,6 @@ class ScreenRecorderHandler(
     private lateinit var virtualDisplay: VirtualDisplay
     private lateinit var imageReader: ImageReader
 
-    //val waitingScreenshot = AtomicBoolean(false)
-
-    //var currBitmap: Bitmap? = null
-        //private set
-
     private val mediaProjectionManager by lazy {
         context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
@@ -64,16 +58,16 @@ class ScreenRecorderHandler(
             mediaProjectionIntent.clone() as Intent
         )
     }
+
     override fun handleMessage(msg: Message) {
         // process incoming messages here
         // this will run in non-ui/background thread
         return when (msg.what) {
             MESSAGE_START -> {
-
+                //
             }
             MESSAGE_TAKE_SCREENSHOT -> {
                 setupRecording()
-                //takeScreenshot()
             }
             MESSAGE_TEARDOWN -> {
                 mediaProjection.stop()
@@ -106,11 +100,11 @@ class ScreenRecorderHandler(
         )
         imageReader.setOnImageAvailableListener({ reader ->
             Log.d(IEngine.TAG, "onImageAvailable")
-            //currBitmap?.recycle()
-            //currBitmap = null
+            // currBitmap?.recycle()
+            // currBitmap = null
 
             var image: Image? = null
-            //currBitmap = try {
+            // currBitmap = try {
             val bitmap = try {
                 image = reader.acquireLatestImage()
                 if (image != null) {
@@ -130,7 +124,7 @@ class ScreenRecorderHandler(
                     null
                 }
             } catch (e: Exception) {
-                //currBitmap?.recycle()
+                // currBitmap?.recycle()
                 Log.e(IEngine.TAG, "Unable to acquire screenshot: ${e.message}", e)
                 null
             }

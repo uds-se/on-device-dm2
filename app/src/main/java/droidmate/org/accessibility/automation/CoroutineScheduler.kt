@@ -2,20 +2,24 @@ package droidmate.org.accessibility.automation
 
 import android.os.SystemClock
 import android.util.Log
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 open class CoroutineScheduler(
     private val accessibilityEventChannel: Channel<Long>,
     private val idleNotificationChannel: Channel<Long>,
     private val waitInterval: Long = 200L,
     private val timeout: Long = 500L
-): CoroutineScope {
+) : CoroutineScope {
     companion object {
         private val TAG = CoroutineScheduler::class.java.simpleName
     }

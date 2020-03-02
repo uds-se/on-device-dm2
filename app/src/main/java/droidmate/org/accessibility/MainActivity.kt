@@ -16,7 +16,6 @@ import androidx.core.app.ActivityCompat
 import droidmate.org.accessibility.automation.AutomationEngine
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorder
 
-
 class MainActivity : AppCompatActivity() {
     companion object {
         internal val TAG = MainActivity::class.java.simpleName

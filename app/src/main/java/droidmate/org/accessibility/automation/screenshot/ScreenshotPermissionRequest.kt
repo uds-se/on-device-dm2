@@ -6,12 +6,10 @@ import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import droidmate.org.accessibility.automation.AutomationEngine.Companion.screenshotPermissionChannel
 import droidmate.org.accessibility.R
+import droidmate.org.accessibility.automation.AutomationEngine.Companion.screenshotPermissionChannel
 import droidmate.org.accessibility.automation.utils.backgroundScope
-
 import kotlinx.coroutines.launch
-import java.lang.RuntimeException
 
 class ScreenshotPermissionRequest : AppCompatActivity() {
 
@@ -48,5 +46,4 @@ class ScreenshotPermissionRequest : AppCompatActivity() {
 
         finish()
     }
-
 }

@@ -6,7 +6,6 @@ import android.view.accessibility.AccessibilityEvent
 import droidmate.org.accessibility.automation.utils.backgroundScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
 
 open class TestService : AccessibilityService() {
     companion object {
@@ -20,7 +19,6 @@ open class TestService : AccessibilityService() {
             accessibilityChannel,
             idleNotificationChannel
         )
-    private val waitingForIdle = AtomicBoolean(false)
     private val automationEngine: AutomationEngine by lazy {
         AutomationEngine(idleNotificationChannel, this)
     }

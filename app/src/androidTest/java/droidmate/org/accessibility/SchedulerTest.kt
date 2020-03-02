@@ -2,18 +2,17 @@ package droidmate.org.accessibility
 
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import droidmate.org.accessibility.automation.Scheduler
+import droidmate.org.accessibility.automation.CoroutineScheduler
 import droidmate.org.accessibility.automation.utils.backgroundScope
+import kotlin.math.abs
+import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import org.junit.Assert.assertTrue
-
 import org.junit.Test
 import org.junit.runner.RunWith
-import kotlin.math.abs
-import kotlin.system.measureTimeMillis
 
 @RunWith(AndroidJUnit4::class)
 class SchedulerTest {
@@ -23,15 +22,18 @@ class SchedulerTest {
 
     private suspend fun testScheduler(maxElapsedTime: Long, timeout: Boolean) {
         val mutex = Mutex(true)
-        val notificationChannel = Channel<Boolean>()
+        val accessibilityChannel = Channel<Long>()
+        val notificationChannel = Channel<Long>()
         val scheduler = if (timeout) {
-            Scheduler(
+            CoroutineScheduler(
+                accessibilityChannel,
                 notificationChannel,
                 500,
                 200
             )
         } else {
-            Scheduler(
+            CoroutineScheduler(
+                accessibilityChannel,
                 notificationChannel,
                 200,
                 500
@@ -52,7 +54,7 @@ class SchedulerTest {
         }
         scheduler.start()
         mutex.lock()
-        scheduler.teardown()
+        scheduler.isCanceled = true
     }
 
     @Test

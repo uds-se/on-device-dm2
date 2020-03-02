@@ -1,4 +1,4 @@
-package droidmate.org.accessibility
+package droidmate.org.accessibility.automation
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
@@ -11,8 +11,6 @@ import android.view.accessibility.AccessibilityWindowInfo
 import droidmate.org.accessibility.automation.IEngine.Companion.TAG
 import droidmate.org.accessibility.automation.IEngine.Companion.debug
 import droidmate.org.accessibility.automation.IEngine.Companion.debugFetch
-import droidmate.org.accessibility.automation.IKeyboardEngine
-import droidmate.org.accessibility.automation.IWindowEngine
 import droidmate.org.accessibility.automation.extensions.getBounds
 import droidmate.org.accessibility.automation.extensions.invalid
 import droidmate.org.accessibility.automation.extensions.isHomeScreen
@@ -26,12 +24,12 @@ import droidmate.org.accessibility.automation.utils.PostProcessor
 import droidmate.org.accessibility.automation.utils.debugEnabled
 import droidmate.org.accessibility.automation.utils.debugOut
 import droidmate.org.accessibility.automation.utils.debugT
+import droidmate.org.accessibility.automation.utils.nullableDebugT
 import droidmate.org.accessibility.automation.utils.processTopDown
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import org.droidmate.deviceInterface.exploration.DeviceResponse
 import org.droidmate.deviceInterface.exploration.UiElementPropertiesI
-
 
 class WindowEngine(
     private val uiHierarchy: UiHierarchy,
@@ -106,7 +104,7 @@ class WindowEngine(
     override suspend fun isKeyboardOpen(): Boolean = getDisplayedWindows()
         .any { it.isKeyboard }
 
-    //FIXME for some reason this does not report the pixels of the system navigation bar in the bottom of the display
+    // FIXME for some reason this does not report the pixels of the system navigation bar in the bottom of the display
     private fun getDisplayDimension(): DisplayDimension {
         debugOut("get display dimension", false)
         val p = Point()
@@ -181,7 +179,7 @@ class WindowEngine(
                     }
                 }
             }
-            // wo could only partially reuse windows or none
+            // we could only partially reuse windows or none
             if (!canReuse) {
                 if (processedWindows.isNotEmpty()) {
                     Log.d(
@@ -194,7 +192,7 @@ class WindowEngine(
             }
         }
 
-        //FIXME why did we limit the number of windows here? Was were an infinite loop?
+        // FIXME why did we limit the number of windows here? Was were an infinite loop?
         count = 0
         while (count++ < 20 && (processedWindows.size < windows.size)) {
             var canContinue = true
@@ -274,7 +272,7 @@ class WindowEngine(
                 if (keyboardEngine.isKeyboard(root)) {
                     uncoveredC.firstOrNull()?.let { r ->
                         outRect.intersect(r)
-                        if (outRect == r) {  // wrong keyboard boundaries reported
+                        if (outRect == r) { // wrong keyboard boundaries reported
                             Log.d(TAG, "try to handle soft keyboard in front with $outRect")
                             uiHierarchy.findAndPerform(listOf(root),
                                 keyboardEngine.selectKeyboardRoot(r.top + 1, r.width(), r.height()),
@@ -323,27 +321,37 @@ class WindowEngine(
             debugOut("start fetch execution", debugFetch)
             // waitForSync(env,afterAction)
 
-            var windows = getDisplayedWindows()
+            var windows = debugT("fetch - get displayed windows", {
+                getDisplayedWindows()
+            }, inMillis = true)
             var isSuccessful = true
 
             // fetch the screenshot if available
             // could maybe use Espresso View.DecorativeView to fetch screenshot instead
-            var img = screenshotEngine.takeScreenshot(actionNr)
+            var img = nullableDebugT("fetch - take screenshot", {
+                screenshotEngine.takeScreenshot(actionNr)
+            }, inMillis = true)
 
             debugOut("start element extraction", debugFetch)
 
             // we want the ui fetch first as it is fast but will likely solve synchronization issues
-            val uiElements = uiHierarchy.fetch(windows, img)
+            val uiElements = nullableDebugT("hierarchy fetch", {
+                uiHierarchy.fetch(windows, img)
+            }, inMillis = true)
                 .let {
                     if (it == null || (!windows.isHomeScreen() && it.none(isInteractive))) {
-                        //retry once for the case that AccessibilityNode tree was not yet stable
+                        // retry once for the case that AccessibilityNode tree was not yet stable
                         Log.w(
                             TAG,
                             "first ui extraction failed or no interactive elements were found " +
                                     "\n $it, \n ---> start a second try"
                         )
-                        windows = getDisplayedWindows()
-                        img = screenshotEngine.takeScreenshot(actionNr)
+                        windows = debugT("fetch - get displayed windows (retry)", {
+                            getDisplayedWindows()
+                        }, inMillis = true)
+                        img = nullableDebugT("fetch - take screenshot (retry)", {
+                            screenshotEngine.takeScreenshot(actionNr)
+                        }, inMillis = true)
                         val secondRes = uiHierarchy.fetch(windows, img)
                         Log.d(TAG, "second try resulted in ${secondRes?.size} elements")
                         secondRes
@@ -357,10 +365,10 @@ class WindowEngine(
                     throw RuntimeException("UI extraction failed for windows: $windows")
                 }
 
-//	Log.d(logTag, "uiHierarchy = $uiHierarchy")
+// 	Log.d(logTag, "uiHierarchy = $uiHierarchy")
             debugOut("INTERACTIVE Element in UI = ${uiElements.any(isInteractive)}")
 
-//			val xmlDump = UiHierarchy.getXml(device)
+// 			val xmlDump = UiHierarchy.getXml(device)
             val appWindows = windows.filter { it.isExtracted() && !it.isKeyboard }
             val focusedWindow = appWindows.firstOrNull { it.w.hasFocus || it.w.hasInputFocus }
                 ?: appWindows.firstOrNull()
@@ -374,13 +382,17 @@ class WindowEngine(
             debugOut("started async ui extraction", debugFetch)
 
             debugOut("compute img pixels", debugFetch)
-            val imgPixels = screenshotEngine.getOrStoreImgPixels(img)
+            val imgPixels = debugT("get or store img pixels", {
+                screenshotEngine.getOrStoreImgPixels(img)
+            }, inMillis = true)
 
             var xml: String =
                 "TODO parse widget list on Pc if we need the XML or introduce a debug property to enable parsing" +
                         ", because (currently) we would have to traverse the tree a second time"
             if (debugEnabled) {
-                xml = uiHierarchy.getXml(this@WindowEngine)
+                xml = debugT("building window XML", {
+                    uiHierarchy.getXml(this@WindowEngine)
+                }, inMillis = true)
             }
 
             lastResponse = DeviceResponse.create(
@@ -443,5 +455,4 @@ class WindowEngine(
             )
         }
     }
-
 }

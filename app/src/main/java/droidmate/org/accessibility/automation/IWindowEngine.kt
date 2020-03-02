@@ -7,7 +7,7 @@ import droidmate.org.accessibility.automation.utils.NodeProcessor
 import droidmate.org.accessibility.automation.utils.PostProcessor
 import org.droidmate.deviceInterface.exploration.DeviceResponse
 
-interface IWindowEngine: IEngine {
+interface IWindowEngine : IEngine {
     val lastDisplayDimension: DisplayDimension
     val lastWindows: List<DisplayedWindow>
 
@@ -26,7 +26,7 @@ interface IWindowEngine: IEngine {
 
     suspend fun isKeyboardOpen(): Boolean
 
-    suspend fun<T> exec(processor: NodeProcessor, postProcessor: PostProcessor<T>): List<T>
+    suspend fun <T> exec(processor: NodeProcessor, postProcessor: PostProcessor<T>): List<T>
 
     suspend fun exec(processor: NodeProcessor)
 

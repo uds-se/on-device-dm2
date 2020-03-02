@@ -8,9 +8,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import droidmate.org.accessibility.automation.IKeyboardEngine
 import droidmate.org.accessibility.automation.KeyboardEngine
+import droidmate.org.accessibility.automation.WindowEngine
 import droidmate.org.accessibility.automation.parsing.UiHierarchy
 import droidmate.org.accessibility.automation.screenshot.IScreenshotEngine
-import droidmate.org.accessibility.automation.screenshot.ScreenshotEngine
+import droidmate.org.accessibility.automation.screenshot.ScreenRecorder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.Assert.assertTrue
@@ -22,14 +23,15 @@ import org.mockito.Mockito.`when`
 
 @RunWith(AndroidJUnit4::class)
 class WindowEngineTest {
-    companion object {
+    /*companion object {
         private val TAG = WindowEngineTest::class.java.simpleName
-    }
+    }*/
 
     private val instr = InstrumentationRegistry.getInstrumentation()
     /*private val service = mock<AccessibilityService> {
         on { windows } doReturn instr.uiAutomation.windows
-    }*/
+    }
+    */
     private val service = Mockito.mock(AccessibilityService::class.java).also {
         `when`(it.windows).thenReturn(instr.uiAutomation.windows)
         `when`(it.rootInActiveWindow).thenReturn(instr.uiAutomation.rootInActiveWindow)
@@ -39,14 +41,20 @@ class WindowEngineTest {
     }
     private val context by lazy { instr.context }
     private val uiHierarchy: UiHierarchy by lazy { UiHierarchy() }
-    private val screenshotEngine: IScreenshotEngine = Mockito.mock(ScreenshotEngine::class.java)
-    //private val screenshotEngine: IScreenshotEngine = mock<ScreenshotEngine>()
+    private val screenshotEngine: IScreenshotEngine = Mockito.mock(ScreenRecorder::class.java)
+    // private val screenshotEngine: IScreenshotEngine = mock<ScreenshotEngine>()
     private val keyboardEngine: IKeyboardEngine by lazy {
         KeyboardEngine(
             context
         )
     }
-    private val windowEngine = WindowEngine(uiHierarchy, screenshotEngine, keyboardEngine, service)
+    private val windowEngine =
+        WindowEngine(
+            uiHierarchy,
+            screenshotEngine,
+            keyboardEngine,
+            service
+        )
 
     @Test
     fun displayRotationTest() {

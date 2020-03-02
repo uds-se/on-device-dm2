@@ -12,7 +12,6 @@ import android.os.RemoteException
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import droidmate.org.accessibility.*
 import droidmate.org.accessibility.automation.IEngine.Companion.TAG
 import droidmate.org.accessibility.automation.IEngine.Companion.debug
 import droidmate.org.accessibility.automation.IEngine.Companion.debugFetch
@@ -22,15 +21,27 @@ import droidmate.org.accessibility.automation.parsing.UiParser
 import droidmate.org.accessibility.automation.parsing.UiSelector
 import droidmate.org.accessibility.automation.screenshot.IScreenshotEngine
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorder
-import droidmate.org.accessibility.automation.utils.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import org.droidmate.deviceInterface.exploration.*
+import droidmate.org.accessibility.automation.utils.api
+import droidmate.org.accessibility.automation.utils.debugEnabled
+import droidmate.org.accessibility.automation.utils.debugOut
+import droidmate.org.accessibility.automation.utils.debugT
+import droidmate.org.accessibility.automation.utils.measurePerformance
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
 import kotlin.system.measureTimeMillis
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.droidmate.deviceInterface.exploration.Click
+import org.droidmate.deviceInterface.exploration.ClickEvent
+import org.droidmate.deviceInterface.exploration.ExplorationAction
+import org.droidmate.deviceInterface.exploration.LongClick
+import org.droidmate.deviceInterface.exploration.LongClickEvent
+import org.droidmate.deviceInterface.exploration.Tick
 
 open class AutomationEngine(
     private val notificationChannel: Channel<Long>,
@@ -53,7 +64,7 @@ open class AutomationEngine(
 ) : IEngine,
     IKeyboardEngine by keyboardEngine,
     IWindowEngine by windowEngine,
-    //IScreenshotEngine by screenshotEngine,
+    // IScreenshotEngine by screenshotEngine,
     CoroutineScope {
     companion object {
         var targetPackage = ""
@@ -91,7 +102,7 @@ open class AutomationEngine(
     }
 
     private suspend fun act(actionNr: Int) {
-        val lastRotation = lastDisplayDimension
+        /*val lastRotation = lastDisplayDimension
         Log.d(TAG, lastRotation.toString())
         val displayRotation = getDisplayRotation()
         Log.w(TAG, displayRotation.toString())
@@ -100,29 +111,34 @@ open class AutomationEngine(
             .joinToString { it.toString() })
         val rootNodes = getAppRootNodes()
         Log.w(TAG, rootNodes
-            .joinToString { it.toString() })
+            .joinToString { it.toString() })*/
 
+        val displayedWindows = getDisplayedWindows()
         if (displayedWindows.none {
-                it.w.pkgName.contains(AutomationEngine.targetPackage)
+                it.w.pkgName.contains(targetPackage)
             }) {
-            launchApp(AutomationEngine.targetPackage, 500)
+            launchApp(targetPackage, 500)
         } else {
             debugT("Act", {
-                val deviceData = windowEngine.fetchDeviceData(actionNr)
+                val deviceData = debugT("fetch device data", {
+                    windowEngine.fetchDeviceData(actionNr)
+                }, inMillis = true)
                 val widgets = deviceData.widgets
                 val target = widgets
                     .filter { it.clickable }
                     .random(random)
                 Log.w(TAG, "target: $target")
-                clickEvent(ClickEvent(target.idHash))
-                //longClickEvent(LongClickEvent(target.idHash))
-                //minimizeMaximize()
-                //tick(Tick(target.idHash,
+                debugT("fetch device data", {
+                    clickEvent(ClickEvent(target.idHash))
+                }, inMillis = true)
+                // longClickEvent(LongClickEvent(target.idHash))
+                // minimizeMaximize()
+                // tick(Tick(target.idHash,
                 //    target.boundaries.center.first,
                 //    target.boundaries.center.second))
-                //pressBack()
-                //pressHome()
-                //pressEnter()
+                // pressBack()
+                // pressHome()
+                // pressEnter()
 
                 /*val appWindow = displayedWindows.first {
                 it.w.pkgName.contains("ch.bailu.aat")
@@ -146,8 +162,8 @@ open class AutomationEngine(
             // wake up the device in order to have (non-black) screenshots
             sendKeyEvent(KeyEvent.KEYCODE_WAKEUP)
             // Orientation is set initially to natural, however can be changed by action
-//			device.setOrientationNatural()
-//			device.freezeRotation()
+// 			device.setOrientationNatural()
+// 			device.freezeRotation()
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
@@ -169,7 +185,7 @@ open class AutomationEngine(
         } catch (e: IllegalStateException) {
             ""
         }
-        debugOut("determined launch-able main activity for pkg=${launchedMainActivity}", debugFetch)
+        debugOut("determined launch-able main activity for pkg=$launchedMainActivity", debugFetch)
 
         val loadTime = measureTimeMillis {
             context.startActivity(intent)
@@ -197,14 +213,14 @@ open class AutomationEngine(
 
         pressRecentApps()
         // Cannot use wait for changes because it crashes UIAutomator
-        //delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
+        // delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
         debugT("waitForIdle", { waitForIdle() }, inMillis = true)
 
         for (i in (0 until 10)) {
             pressRecentApps()
 
             // Cannot use wait for changes because it waits some interact-able element
-            //delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
+            // delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
             debugT("waitForIdle", { waitForIdle() }, inMillis = true)
 
             Log.d(TAG, "Current package name $activeAppPackage")
@@ -250,7 +266,7 @@ open class AutomationEngine(
     private suspend fun clickEvent(action: ClickEvent): Boolean {
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
-            //	Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
+            // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
             nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         }
 
@@ -289,7 +305,7 @@ open class AutomationEngine(
     private suspend fun longClickEvent(action: LongClickEvent): Boolean {
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
-            //	Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
+            // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
             nodeInfo.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)
         }
 

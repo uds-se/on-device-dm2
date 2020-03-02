@@ -8,11 +8,10 @@ import droidmate.org.accessibility.automation.extensions.getBounds
 import droidmate.org.accessibility.automation.parsing.SelectorCondition
 import droidmate.org.accessibility.automation.utils.debugOut
 
-class KeyboardEngine(private val context: Context):
-    IKeyboardEngine {
+class KeyboardEngine(private val context: Context) : IKeyboardEngine {
     private val keyboardPackages by lazy { computeKeyboardPackages() }
 
-    override fun isKeyboard(node: AccessibilityNodeInfo?) : Boolean {
+    override fun isKeyboard(node: AccessibilityNodeInfo?): Boolean {
         return keyboardPackages.contains(node?.packageName)
     }
 

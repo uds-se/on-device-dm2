@@ -15,15 +15,17 @@ private var c = 0
 fun Bitmap.toByteArray(): ByteArray {
     val h = this.height
     val size = this.rowBytes * h
-    val buffer = ByteBuffer.allocate(size * 4)  // *4 since each pixel is is 4 byte big
+    val buffer = ByteBuffer.allocate(size * 4) // *4 since each pixel is is 4 byte big
     this.copyPixelsToBuffer(buffer)
-//		val config = Bitmap.Config.valueOf(bm.getConfig().name)
+// 		val config = Bitmap.Config.valueOf(bm.getConfig().name)
     return buffer.array()
 }
 
-@Suppress("unused") // keep it here for now, it may become useful later on
+// keep it here for now, it may become useful later on
+@Suppress("unused")
 fun ByteArray.toBitmap(width: Int, height: Int): Bitmap {
-    val config = Bitmap.Config.ARGB_8888  // should be the value from above 'val config = ..' call
+    // should be the value from above 'val config = ..' call
+    val config = Bitmap.Config.ARGB_8888
     val bm = Bitmap.createBitmap(width, height, config)
     val buffer = ByteBuffer.wrap(this)
     bm.copyPixelsFromBuffer(buffer)
