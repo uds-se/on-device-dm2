@@ -13,6 +13,7 @@ import android.widget.AdapterView.OnItemClickListener
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.facebook.drawee.backends.pipeline.Fresco
 import droidmate.org.accessibility.automation.AutomationEngine
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorder
 
@@ -23,6 +24,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Fresco.initialize(this)
         setContentView(R.layout.activity_main)
 
         val appList = findViewById<ListView>(R.id.installed_app_list)

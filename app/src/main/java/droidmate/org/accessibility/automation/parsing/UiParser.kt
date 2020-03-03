@@ -1,14 +1,12 @@
 package droidmate.org.accessibility.automation.parsing
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import droidmate.org.accessibility.automation.extensions.BitmapProcessor
 import droidmate.org.accessibility.automation.extensions.getBounds
 import droidmate.org.accessibility.automation.extensions.markedAsOccupied
-import droidmate.org.accessibility.automation.extensions.toByteArray
-import droidmate.org.accessibility.automation.extensions.toRect
 import droidmate.org.accessibility.automation.extensions.toRectangle
 import droidmate.org.accessibility.automation.extensions.visibleAxis
 import droidmate.org.accessibility.automation.extensions.visibleAxisR
@@ -16,7 +14,6 @@ import droidmate.org.accessibility.automation.utils.NodeProcessor
 import droidmate.org.accessibility.automation.utils.addAttribute
 import droidmate.org.accessibility.automation.utils.api
 import droidmate.org.accessibility.automation.utils.debugOut
-import droidmate.org.accessibility.automation.utils.debugT
 import droidmate.org.accessibility.automation.utils.safeCharSeqToString
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.isActive
@@ -50,7 +47,7 @@ abstract class UiParser {
             Log.w(TAG, "coroutine is no longer active UI parsing is aborted")
             return null
         }
-        val refresh = debugT("node refresh", { node.refresh() }, inMillis = true)
+        /*val refresh = node.refresh()
         if (!refresh) {
             Log.d(
                 TAG,
@@ -58,11 +55,11 @@ abstract class UiParser {
                         "return null for this element"
             )
             return null
-        }
+        }*/
         val xPath = parentXpath + "${node.className}[${index + 1}]"
 
         val nChildren = node.childCount
-        val idHash = debugT("compute hash id", { computeIdHash(xPath, w) }, inMillis = true)
+        val idHash = computeIdHash(xPath, w)
 
         SiblingNodeComparator.initParentBounds(node)
         // FIXME sometimes getChild returns a null node, this may be a synchronization issue in this
@@ -83,19 +80,17 @@ abstract class UiParser {
                     .also { childNode.recycle() }
             }
 
-        return debugT("create widget", {
-            node.createWidget(
-                w,
-                xPath,
-                children.filterNotNull(),
-                img,
-                idHash = idHash,
-                parentH = parentH,
-                processedNodes = nodes
-            ).also {
-                nodes.add(it)
-            }
-        }, inMillis = true)
+        return node.createWidget(
+            w,
+            xPath,
+            children.filterNotNull(),
+            img,
+            idHash = idHash,
+            parentH = parentH,
+            processedNodes = nodes
+        ).also {
+            nodes.add(it)
+        }
     }
 
     private val isClickableDescendant: (UiElementProperties) -> Boolean = {
@@ -180,7 +175,7 @@ abstract class UiParser {
             if (actionList.contains(AccessibilityNodeInfo.AccessibilityAction.ACTION_SELECT) && markedAsOccupied) isSelected else null
         return UiElementProperties(
             idHash = idHash,
-            imgId = computeImgId(img, visibleBounds),
+            imgId = 0, // computeImgId(img, visibleBounds),
             allSubAreas = emptyList(), // subBounds,
 // 			isInBackground = visibleBounds.isNotEmpty() && (
 // 					!subBounds.isComplete()
@@ -226,13 +221,14 @@ abstract class UiParser {
     }
 
     private fun computeImgId(img: Bitmap?, b: Rectangle): Int {
-        if (img == null || b.isEmpty()) return 0
-        val subImg = Bitmap.createBitmap(b.width, b.height, Bitmap.Config.ARGB_8888)
-        val c = Canvas(subImg)
-        c.drawBitmap(img, b.toRect(), Rect(0, 0, b.width, b.height), null)
-        // now subImg contains all its pixel of the area specified by b
-        // convert the image into byte array to determine a deterministic hash value
-        return subImg.toByteArray().contentHashCode()
+        return if (img == null || b.isEmpty()) {
+                0
+            } else {
+                val subImg = Bitmap.createBitmap(b.width, b.height, Bitmap.Config.ARGB_8888)
+                val processor = BitmapProcessor(b)
+                processor.process(subImg, img)
+                processor.contentHash
+            }
     }
 
     /*

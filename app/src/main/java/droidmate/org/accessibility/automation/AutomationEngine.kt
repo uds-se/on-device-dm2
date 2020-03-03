@@ -102,24 +102,14 @@ open class AutomationEngine(
     }
 
     private suspend fun act(actionNr: Int) {
-        /*val lastRotation = lastDisplayDimension
-        Log.d(TAG, lastRotation.toString())
-        val displayRotation = getDisplayRotation()
-        Log.w(TAG, displayRotation.toString())
-        val displayedWindows = getDisplayedWindows()
-        Log.w(TAG, displayedWindows
-            .joinToString { it.toString() })
-        val rootNodes = getAppRootNodes()
-        Log.w(TAG, rootNodes
-            .joinToString { it.toString() })*/
-
         val displayedWindows = getDisplayedWindows()
         if (displayedWindows.none {
                 it.w.pkgName.contains(targetPackage)
             }) {
             launchApp(targetPackage, 500)
         } else {
-            debugT("Act", {
+            Log.d("droidmate/performance", "Here")
+            debugT("----------Act($actionNr)", {
                 val deviceData = debugT("fetch device data", {
                     windowEngine.fetchDeviceData(actionNr)
                 }, inMillis = true)
@@ -128,7 +118,7 @@ open class AutomationEngine(
                     .filter { it.clickable }
                     .random(random)
                 Log.w(TAG, "target: $target")
-                debugT("fetch device data", {
+                debugT("click event", {
                     clickEvent(ClickEvent(target.idHash))
                 }, inMillis = true)
                 // longClickEvent(LongClickEvent(target.idHash))

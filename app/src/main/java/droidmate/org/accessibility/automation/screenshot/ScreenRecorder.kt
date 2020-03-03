@@ -11,7 +11,6 @@ import android.util.Log
 import droidmate.org.accessibility.automation.IEngine
 import droidmate.org.accessibility.automation.extensions.compress
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_START
-import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TAKE_SCREENSHOT
 import droidmate.org.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TEARDOWN
 import droidmate.org.accessibility.automation.utils.debugOut
 import droidmate.org.accessibility.automation.utils.debugT
@@ -89,7 +88,7 @@ class ScreenRecorder private constructor(
         }
 
         handler = ScreenRecorderHandler(looper, bitmapChannel, context, mediaProjectionIntent)
-        handler.sendEmptyMessage(MESSAGE_START)
+        // handler.sendEmptyMessage(MESSAGE_START)
     }
 
     override fun quit(): Boolean {
@@ -99,8 +98,9 @@ class ScreenRecorder private constructor(
 
     override fun takeScreenshot(actionNr: Int): Bitmap? {
         return nullableDebugT("take screenshot", {
-            var bitmap: Bitmap? = null
-            handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
+            var bitmap: Bitmap?
+            // handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
+            handler.sendEmptyMessage(MESSAGE_START)
             runBlocking {
                 bitmap = bitmapChannel.receive()
 
@@ -109,6 +109,8 @@ class ScreenRecorder private constructor(
                         saveScreenshot(bitmap, actionNr.toString())
                     }, inMillis = true)
                 }
+
+                handler.sendEmptyMessage(MESSAGE_TEARDOWN)
 
                 bitmap
             }

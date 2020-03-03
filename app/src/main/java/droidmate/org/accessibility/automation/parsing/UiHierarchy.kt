@@ -137,7 +137,9 @@ class UiHierarchy : UiParser() {
         retry: Boolean = true,
         action: suspend (AccessibilityNodeInfo) -> Boolean
     ): Boolean {
-        return findAndPerform(engine.getAppRootNodes(), cond, retry, action)
+        return debugT("find and perform", {
+            findAndPerform(engine.getAppRootNodes(), cond, retry, action)
+        }, inMillis = true)
     }
 
     /**
@@ -165,9 +167,9 @@ class UiHierarchy : UiParser() {
 // 					Log.d(TAG,"node $xPath is invisible")
                     false
                 }
-                !node.refresh() -> {
+                /*!node.refresh() -> {
                     Log.w(TAG, "refresh on node $xPath failed"); false
-                }
+                }*/
                 // do not traverse deeper
                 else -> {
                     found = cond(node, xPath)
@@ -279,20 +281,4 @@ class UiHierarchy : UiParser() {
                 Log.d(TAG, "wait was successful: $found")
             }
         }
-
-    /*fun getScreenShot(automation: UiAutomation): Bitmap? {
-        var screenshot: Bitmap? = null
-        debugT("first screen-fetch attempt ", {
-            try {
-// 				screenshot = Screenshot.capture()?.bitmap // REMARK we cannot use this method as it would screw up the window handles in the UiAutomation
-                screenshot = automation.takeScreenshot()
-            } catch (e: Exception) {
-                Log.w(TAG, "exception on screenshot-capture")
-            }
-        }, inMillis = true)
-        return screenshot.also {
-            if (it == null)
-                Log.w(TAG, "no screenshot available")
-        }
-    }*/
 }

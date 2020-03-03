@@ -94,7 +94,7 @@ class WindowEngine(
             throw IllegalStateException("Error: Displayed Windows could not be extracted $windows")
         }
 
-        return windows
+        return windows.filterNot { it.isLauncher }
     }
 
     // FIXME for the apps with interaction issues, check if we need different window types here
@@ -328,9 +328,7 @@ class WindowEngine(
 
             // fetch the screenshot if available
             // could maybe use Espresso View.DecorativeView to fetch screenshot instead
-            var img = nullableDebugT("fetch - take screenshot", {
-                screenshotEngine.takeScreenshot(actionNr)
-            }, inMillis = true)
+            var img = screenshotEngine.takeScreenshot(actionNr)
 
             debugOut("start element extraction", debugFetch)
 
@@ -346,12 +344,8 @@ class WindowEngine(
                             "first ui extraction failed or no interactive elements were found " +
                                     "\n $it, \n ---> start a second try"
                         )
-                        windows = debugT("fetch - get displayed windows (retry)", {
-                            getDisplayedWindows()
-                        }, inMillis = true)
-                        img = nullableDebugT("fetch - take screenshot (retry)", {
-                            screenshotEngine.takeScreenshot(actionNr)
-                        }, inMillis = true)
+                        windows = getDisplayedWindows()
+                        img = screenshotEngine.takeScreenshot(actionNr)
                         val secondRes = uiHierarchy.fetch(windows, img)
                         Log.d(TAG, "second try resulted in ${secondRes?.size} elements")
                         secondRes
@@ -366,6 +360,7 @@ class WindowEngine(
                 }
 
 // 	Log.d(logTag, "uiHierarchy = $uiHierarchy")
+            debugOut("Elements in UI = ${uiElements.size}")
             debugOut("INTERACTIVE Element in UI = ${uiElements.any(isInteractive)}")
 
 // 			val xmlDump = UiHierarchy.getXml(device)
@@ -389,7 +384,7 @@ class WindowEngine(
             var xml: String =
                 "TODO parse widget list on Pc if we need the XML or introduce a debug property to enable parsing" +
                         ", because (currently) we would have to traverse the tree a second time"
-            if (debugEnabled) {
+            if (false) { // if (debugEnabled) {
                 xml = debugT("building window XML", {
                     uiHierarchy.getXml(this@WindowEngine)
                 }, inMillis = true)

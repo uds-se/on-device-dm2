@@ -10,14 +10,12 @@ import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.Image
 import android.media.ImageReader
-import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
 import android.util.Log
 import android.view.WindowManager
-import droidmate.org.accessibility.automation.IEngine
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +30,7 @@ class ScreenRecorderHandler(
     private val mediaProjectionIntent: Intent
 ) : Handler(looper), CoroutineScope {
     companion object {
+        internal val TAG = ScreenRecorderHandler::class.java.simpleName
         private const val RECORDING_NAME = "screencap"
         private const val VIRTUAL_DISPLAY_FLAGS =
             DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC
@@ -45,8 +44,11 @@ class ScreenRecorderHandler(
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + job
 
+    // private var currBitmap: Bitmap? = null
     private lateinit var virtualDisplay: VirtualDisplay
     private lateinit var imageReader: ImageReader
+    private var width = 0
+    private var height = 0
 
     private val mediaProjectionManager by lazy {
         context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -64,13 +66,16 @@ class ScreenRecorderHandler(
         // this will run in non-ui/background thread
         return when (msg.what) {
             MESSAGE_START -> {
-                //
-            }
-            MESSAGE_TAKE_SCREENSHOT -> {
                 setupRecording()
             }
+            MESSAGE_TAKE_SCREENSHOT -> {
+                // waitingScreenshot.set(true)
+            }
             MESSAGE_TEARDOWN -> {
-                mediaProjection.stop()
+                // currBitmap?.recycle()
+                // currBitmap = null
+                virtualDisplay.release()
+                imageReader.setOnImageAvailableListener(null, null)
             }
             else -> {
                 throw IllegalStateException("Invalid message type: ${msg.what}")
@@ -78,14 +83,15 @@ class ScreenRecorderHandler(
         }
     }
 
+    @Synchronized
     private fun setupRecording() {
         val density = context.resources.displayMetrics.densityDpi
         val display =
             (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
         val size = Point()
         display.getSize(size)
-        val width = size.x
-        val height = size.y
+        width = size.x
+        height = size.y
 
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 1)
         virtualDisplay = mediaProjection.createVirtualDisplay(
@@ -96,57 +102,49 @@ class ScreenRecorderHandler(
             VIRTUAL_DISPLAY_FLAGS,
             imageReader.surface,
             null,
-            null
+            this
         )
-        imageReader.setOnImageAvailableListener({ reader ->
-            Log.d(IEngine.TAG, "onImageAvailable")
-            // currBitmap?.recycle()
-            // currBitmap = null
 
-            var image: Image? = null
-            // currBitmap = try {
-            val bitmap = try {
-                image = reader.acquireLatestImage()
-                if (image != null) {
-                    val planes = image.planes
-                    val buffer = planes[0].buffer
-                    val pixelStride = planes[0].pixelStride
-                    val rowStride = planes[0].rowStride
-                    val rowPadding = rowStride - pixelStride * width
-                    val bitmap = Bitmap.createBitmap(
-                        width + rowPadding / pixelStride,
-                        height,
-                        Bitmap.Config.ARGB_8888
-                    )
-                    bitmap.copyPixelsFromBuffer(buffer)
-                    bitmap
-                } else {
+        imageReader.setOnImageAvailableListener(object : ImageReader.OnImageAvailableListener {
+            @Synchronized
+            override fun onImageAvailable(reader: ImageReader) {
+                Log.d(TAG, "onImageAvailable")
+
+                // currBitmap?.recycle()
+                // currBitmap = null
+
+                var image: Image? = null
+                // currBitmap = try {
+                val bitmap = try {
+                    image = reader.acquireLatestImage()
+                    if (image != null) {
+                        val planes = image.planes
+                        val buffer = planes[0].buffer
+                        val pixelStride = planes[0].pixelStride
+                        val rowStride = planes[0].rowStride
+                        val rowPadding = rowStride - pixelStride * width
+                        val bitmap = Bitmap.createBitmap(
+                            width + rowPadding / pixelStride,
+                            height,
+                            Bitmap.Config.ARGB_8888
+                        )
+                        bitmap.copyPixelsFromBuffer(buffer)
+                        bitmap
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    // currBitmap?.recycle()
+                    Log.e(TAG, "Unable to acquire screenshot: ${e.message}", e)
                     null
                 }
-            } catch (e: Exception) {
-                // currBitmap?.recycle()
-                Log.e(IEngine.TAG, "Unable to acquire screenshot: ${e.message}", e)
-                null
-            }
-            image?.close()
-            reader.close()
+                image?.close()
+                reader.close()
 
-            launch {
-                bitmapChannel.send(bitmap)
+                launch {
+                    bitmapChannel.send(bitmap)
+                }
             }
-        }, null)
-
-        registerTearDown()
-    }
-
-    private fun registerTearDown() {
-        mediaProjection.registerCallback(object : MediaProjection.Callback() {
-            override fun onStop() {
-                super.onStop()
-                virtualDisplay.release()
-                imageReader.setOnImageAvailableListener(null, null)
-                mediaProjection.unregisterCallback(this)
-            }
-        }, null)
+        }, this)
     }
 }

@@ -1,13 +1,17 @@
 package droidmate.org.accessibility.automation.extensions
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Rect
 import android.util.Log
+import com.facebook.imagepipeline.request.BasePostprocessor
 import droidmate.org.accessibility.automation.parsing.DisplayedWindow
 import droidmate.org.accessibility.automation.utils.TAG
 import droidmate.org.accessibility.automation.utils.debugT
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max
+import org.droidmate.deviceInterface.exploration.Rectangle
 
 private var t = 0.0
 private var c = 0
@@ -94,4 +98,22 @@ fun Bitmap?.isValid(appWindows: List<DisplayedWindow>): Boolean {
         }
     } else
         false
+}
+
+class BitmapProcessor(private val b: Rectangle) : BasePostprocessor() {
+    var contentHash = 0
+        private set
+
+    override fun process(destBitmap: Bitmap?, sourceBitmap: Bitmap?) {
+        if (sourceBitmap == null || destBitmap == null || b.isEmpty()) {
+            return
+        }
+
+        val c = Canvas(destBitmap)
+        c.drawBitmap(sourceBitmap, b.toRect(), Rect(0, 0, b.width, b.height), null)
+
+        // now subImg contains all its pixel of the area specified by b
+        // convert the image into byte array to determine a deterministic hash value
+        contentHash = destBitmap.toByteArray().contentHashCode()
+    }
 }
