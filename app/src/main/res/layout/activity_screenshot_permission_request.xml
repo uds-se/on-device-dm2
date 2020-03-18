@@ -6,6 +6,6 @@
     android:theme="@android:style/Theme.NoDisplay"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".automation.screenshot.ScreenshotPermissionRequest">
+    tools:context="org.droidmate.accessibility.automation.screenshot.ScreenshotPermissionRequest">
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

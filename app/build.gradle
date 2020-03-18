@@ -10,7 +10,7 @@ android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
     defaultConfig {
-        applicationId "droidmate.org.accessibility"
+        applicationId "org.droidmate.accessibility"
         minSdkVersion 28
         targetSdkVersion 29
         versionCode 1
@@ -38,6 +38,9 @@ android {
 
 dependencies {
     implementation "com.github.hotzkow:platformInterfaceLib:2.4.2"
+    // implementation 'com.github.uds-se.droidmate:explorationModel:master-SNAPSHOT'
+    implementation 'com.github.uds-se.droidmate:core:master-SNAPSHOT'
+    implementation 'com.github.uds-se.droidmate:exploration:master-SNAPSHOT'
 
     implementation "androidx.appcompat:appcompat:1.1.0"
     implementation "androidx.core:core-ktx:1.2.0"
