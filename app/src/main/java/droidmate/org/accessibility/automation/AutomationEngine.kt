@@ -4,10 +4,12 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Path
 import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.Bundle
 import android.os.RemoteException
 import android.util.Log
 import android.view.KeyEvent
@@ -38,9 +40,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.droidmate.deviceInterface.exploration.Click
 import org.droidmate.deviceInterface.exploration.ClickEvent
-import org.droidmate.deviceInterface.exploration.ExplorationAction
+import org.droidmate.deviceInterface.exploration.Direction
 import org.droidmate.deviceInterface.exploration.LongClick
 import org.droidmate.deviceInterface.exploration.LongClickEvent
+import org.droidmate.deviceInterface.exploration.Scroll
+import org.droidmate.deviceInterface.exploration.TextInsert
 import org.droidmate.deviceInterface.exploration.Tick
 
 open class AutomationEngine(
@@ -64,7 +68,7 @@ open class AutomationEngine(
 ) : IEngine,
     IKeyboardEngine by keyboardEngine,
     IWindowEngine by windowEngine,
-    // IScreenshotEngine by screenshotEngine,
+    IScreenshotEngine,
     CoroutineScope {
     companion object {
         var targetPackage = ""
@@ -159,7 +163,7 @@ open class AutomationEngine(
         }
     }
 
-    private suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
+    suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
         Log.i(TAG, "Launching app $appPackageName and waiting $launchActivityDelay ms for it to start")
         var success = false
         // Launch the app
@@ -197,7 +201,7 @@ open class AutomationEngine(
         return success
     }
 
-    private suspend fun minimizeMaximize() {
+    suspend fun minimizeMaximize(): Boolean {
         val currentPackage = activeAppPackage
         Log.d(TAG, "Minimizing and maximizing current package $currentPackage")
 
@@ -217,6 +221,8 @@ open class AutomationEngine(
             if (activeAppPackage == currentPackage)
                 break
         }
+
+        return activeAppPackage == currentPackage
     }
 
     private val idMatch: (Int) -> SelectorCondition = { idHash ->
@@ -228,7 +234,7 @@ open class AutomationEngine(
         }
     }
 
-    private fun coordinateClick(x: Int, y: Int, duration: Long = 500) {
+    fun coordinateClick(x: Int, y: Int, duration: Long = 500) {
         Log.i(TAG, "Clicking on coordinate ($x, $y) with a duration of $duration ms")
         if (api < Build.VERSION_CODES.N) {
             return
@@ -243,7 +249,7 @@ open class AutomationEngine(
         service.dispatchGesture(gestureDescription, null, null)
     }
 
-    private suspend fun click(action: Click): Boolean {
+    suspend fun click(action: Click): Boolean {
         if (api < Build.VERSION_CODES.N) {
             return false
         }
@@ -253,7 +259,7 @@ open class AutomationEngine(
         return true
     }
 
-    private suspend fun clickEvent(action: ClickEvent): Boolean {
+    suspend fun clickEvent(action: ClickEvent): Boolean {
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
             // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
@@ -268,7 +274,55 @@ open class AutomationEngine(
         return success
     }
 
-    private suspend fun tick(action: Tick): Boolean {
+    suspend fun insertText(action: TextInsert): Boolean {
+        return uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
+            if (nodeInfo.isFocusable) {
+                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                Log.d(TAG, "focus input-field")
+            } else if (nodeInfo.isClickable) {
+                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                Log.d(TAG, "click non-focusable input-field")
+            }
+            // do this for API Level above 19 (exclusive)
+            val args = Bundle()
+            args.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                action.text
+            )
+            nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                .also {
+                    Log.d(TAG, "perform successful=$it")
+                    // when doing multiple action sending enter may trigger a continue
+                    // button but not all elements are yet filled
+                    if (action.sendEnter && !isWithinQueue) {
+                        Log.d(TAG, "trigger enter")
+                        pressEnter()
+                    }
+                    if (nodeInfo.isFocusable) {
+                        nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
+                    }
+                    delay(action.delay)
+                }
+        }
+    }
+
+    suspend fun scroll(action: Scroll): Boolean {
+        // do this for API Level above 19 (exclusive)
+        val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
+            // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
+            if (action.direction == Direction.DOWN || action.direction == Direction.RIGHT) {
+                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            } else {
+                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+            }
+        }
+
+        // wait for display update
+        Log.d(TAG, "perform successful=$success")
+        return success
+    }
+
+    suspend fun tick(action: Tick): Boolean {
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) {
             val newStatus = !it.isChecked
             it.isChecked = newStatus
@@ -282,7 +336,7 @@ open class AutomationEngine(
         return success
     }
 
-    private suspend fun longClick(action: LongClick): Boolean {
+    suspend fun longClick(action: LongClick): Boolean {
         if (api < Build.VERSION_CODES.N) {
             return false
         }
@@ -292,7 +346,7 @@ open class AutomationEngine(
         return true
     }
 
-    private suspend fun longClickEvent(action: LongClickEvent): Boolean {
+    suspend fun longClickEvent(action: LongClickEvent): Boolean {
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
             // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
@@ -311,19 +365,19 @@ open class AutomationEngine(
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS)
     }
 
-    private fun pressHome() {
+    fun pressHome() {
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
     }
 
-    private fun pressBack() {
+    fun pressBack() {
         service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
     }
 
-    private fun pressEnter() {
+    fun pressEnter() {
         sendKeyEvent(KeyEvent.KEYCODE_ENTER)
     }
 
-    private fun sendKeyEvent(keyCode: Int) {
+    fun sendKeyEvent(keyCode: Int) {
         try {
             val keyCommand = "input keyevent $keyCode"
             val runtime = Runtime.getRuntime()
@@ -334,7 +388,7 @@ open class AutomationEngine(
         }
     }
 
-    private fun enableWifi() {
+    fun enableWifi() {
         val wfm = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val success = wfm.setWifiEnabled(true)
 
@@ -343,7 +397,15 @@ open class AutomationEngine(
         }
     }
 
-    suspend fun execute(action: ExplorationAction): Any {
-        return false
+    override fun takeScreenshot(actionNr: Int): Bitmap? {
+        return screenshotEngine.takeScreenshot(actionNr)
+    }
+
+    override fun getOrStoreImgPixels(bm: Bitmap?): ByteArray {
+        return screenshotEngine.getOrStoreImgPixels(bm)
+    }
+
+    override fun getOrStoreImgPixels(bm: Bitmap?, actionId: Int): ByteArray {
+        return screenshotEngine.getOrStoreImgPixels(bm, actionId)
     }
 }
