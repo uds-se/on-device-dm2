@@ -310,10 +310,14 @@ open class AutomationEngine(
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
             // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
-            if (action.direction == Direction.DOWN || action.direction == Direction.RIGHT) {
-                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            if (action.direction == Direction.UP) {
+                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_UP.id)
+            } else if (action.direction == Direction.DOWN) {
+                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_DOWN.id)
+            } else if (action.direction == Direction.LEFT) {
+                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_LEFT.id)
             } else {
-                nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_RIGHT.id)
             }
         }
 
