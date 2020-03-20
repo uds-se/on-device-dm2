@@ -24,6 +24,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import org.droidmate.accessibility.automation.IEngine.Companion.TAG
 import org.droidmate.accessibility.automation.IEngine.Companion.debug
 import org.droidmate.accessibility.automation.IEngine.Companion.debugFetch
@@ -38,6 +39,9 @@ import org.droidmate.accessibility.automation.utils.debugEnabled
 import org.droidmate.accessibility.automation.utils.debugOut
 import org.droidmate.accessibility.automation.utils.debugT
 import org.droidmate.accessibility.automation.utils.measurePerformance
+import org.droidmate.accessibility.exploration.OnDeviceConfigurationBuilder
+import org.droidmate.accessibility.exploration.OnDeviceExploration
+import org.droidmate.command.ExploreCommandBuilder
 import org.droidmate.deviceInterface.exploration.Click
 import org.droidmate.deviceInterface.exploration.ClickEvent
 import org.droidmate.deviceInterface.exploration.Direction
@@ -46,6 +50,8 @@ import org.droidmate.deviceInterface.exploration.LongClickEvent
 import org.droidmate.deviceInterface.exploration.Scroll
 import org.droidmate.deviceInterface.exploration.TextInsert
 import org.droidmate.deviceInterface.exploration.Tick
+import org.droidmate.exploration.strategy.ExplorationStrategyPool
+import org.droidmate.explorationModel.factory.DefaultModelProvider
 
 open class AutomationEngine(
     private val notificationChannel: Channel<Long>,
@@ -77,6 +83,24 @@ open class AutomationEngine(
 
     var canceled = false
 
+    private val cfg by lazy {
+        OnDeviceConfigurationBuilder().build(emptyArray())
+    }
+
+    private val exploration by lazy {
+        val builder = ExploreCommandBuilder.fromConfig(cfg)
+
+        OnDeviceExploration(
+            this,
+            cfg = cfg,
+            strategyProvider = ExplorationStrategyPool(
+                builder.strategies,
+                builder.selectors
+            ),
+            modelProvider = DefaultModelProvider()
+        )
+    }
+
     private val random = Random(0)
 
     private var job: Job = Job()
@@ -92,8 +116,13 @@ open class AutomationEngine(
 
     fun run() = launch {
         setupDevice()
+        exploration.setup()
 
-        var actionNr = 0
+        supervisorScope {
+            exploration.execute()
+        }
+
+        /* var actionNr = 0
         while (!canceled) {
             Log.d(TAG, "Continuing loop, waiting for idle")
             waitForIdle()
@@ -102,9 +131,10 @@ open class AutomationEngine(
             Log.d(TAG, "Acted, repeating loop")
 
             actionNr += 1
-        }
+        } */
     }
 
+    /*
     private suspend fun act(actionNr: Int) {
         val displayedWindows = getDisplayedWindows()
         if (displayedWindows.none {
@@ -143,8 +173,9 @@ open class AutomationEngine(
             }, inMillis = true)
         }
     }
+    */
 
-    private suspend fun waitForIdle() {
+    suspend fun waitForIdle() {
         notificationChannel.receive()
     }
 
@@ -310,14 +341,19 @@ open class AutomationEngine(
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
             // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
-            if (action.direction == Direction.UP) {
-                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_UP.id)
-            } else if (action.direction == Direction.DOWN) {
-                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_DOWN.id)
-            } else if (action.direction == Direction.LEFT) {
-                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_LEFT.id)
-            } else {
-                nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_RIGHT.id)
+            when (action.direction) {
+                Direction.UP -> {
+                    nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_UP.id)
+                }
+                Direction.DOWN -> {
+                    nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_DOWN.id)
+                }
+                Direction.LEFT -> {
+                    nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_LEFT.id)
+                }
+                else -> {
+                    nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_RIGHT.id)
+                }
             }
         }
 
@@ -411,5 +447,10 @@ open class AutomationEngine(
 
     override fun getOrStoreImgPixels(bm: Bitmap?, actionId: Int): ByteArray {
         return screenshotEngine.getOrStoreImgPixels(bm, actionId)
+    }
+
+    fun terminate() {
+        canceled = true
+        targetPackage = ""
     }
 }

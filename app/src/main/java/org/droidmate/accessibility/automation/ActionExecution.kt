@@ -2,12 +2,16 @@ package org.droidmate.accessibility.automation
 
 import android.util.Log
 import android.view.KeyEvent
+import java.lang.Integer.max
 import org.droidmate.accessibility.automation.exceptions.DeviceDaemonException
+import org.droidmate.accessibility.automation.exceptions.ErrorResponse
+import org.droidmate.accessibility.automation.utils.debugT
 import org.droidmate.deviceInterface.DeviceConstants
 import org.droidmate.deviceInterface.exploration.ActionQueue
 import org.droidmate.deviceInterface.exploration.ActionType
 import org.droidmate.deviceInterface.exploration.Click
 import org.droidmate.deviceInterface.exploration.ClickEvent
+import org.droidmate.deviceInterface.exploration.DeviceResponse
 import org.droidmate.deviceInterface.exploration.ExplorationAction
 import org.droidmate.deviceInterface.exploration.GlobalAction
 import org.droidmate.deviceInterface.exploration.LaunchApp
@@ -20,9 +24,62 @@ import org.droidmate.deviceInterface.exploration.Tick
 
 private const val TAG = DeviceConstants.deviceLogcatTagPrefix + "ActionExecution"
 
+var lastId = 0
 var isWithinQueue = false
 
-suspend fun ExplorationAction.execute(env: AutomationEngine): Any {
+private var nActions = 0
+private var tFetch = 0L
+private var tExec = 0L
+private var et = 0.0
+
+suspend fun ExplorationAction.execute(env: AutomationEngine): DeviceResponse {
+    Log.v(TAG, "Executing action: ($nActions) $this")
+
+    return try {
+        debugT(" EXECUTE-TIME avg = ${et / max(1, nActions)}", {
+            isWithinQueue = false
+
+            Log.v(TAG, "Performing GUI action $this [${this.id}]")
+
+            val result = debugT("execute action avg= ${tExec / (max(nActions, 1) * 1000000)}",
+                {
+                    lastId = this.id
+                    this.execute(env)
+                },
+                inMillis = true,
+                timer = {
+                    tExec += it
+                }
+            )
+            // TODO if the previous action was not successful we should return an "ActionFailed"-DeviceResponse
+
+            // only fetch once even if the action was a FetchGUI action
+            if (!this.isFetch())
+                debugT("FETCH avg= ${tFetch / (max(nActions, 1) * 1000000)}", {
+                    env.fetchDeviceData(nActions, afterAction = true)
+                },
+                    inMillis = true,
+                    timer = {
+                        tFetch += it
+                    }
+                )
+            else {
+                result
+            }
+        }, inMillis = true, timer = {
+            et += it / 1000000.0
+            nActions += 1
+        })
+    } catch (e: Throwable) {
+        Log.e(TAG, "Error: " + e.message)
+        Log.e(TAG, "Printing stack trace for debug")
+        e.printStackTrace()
+
+        ErrorResponse(e)
+    }
+}
+
+private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any {
     Log.d(TAG, "START execution ${toString()}($id)")
     // REMARK this has to be an assignment for when to check for exhaustiveness
     val result: Any = when (this) {
@@ -68,7 +125,7 @@ suspend fun ExplorationAction.execute(env: AutomationEngine): Any {
             actions.forEachIndexed { i, action ->
                 if (i == actions.size - 1) isWithinQueue = false // reset var at the end of queue
                 success = success &&
-                        action.execute(env).also {
+                        action.performAction(env).also {
                             if (i < actions.size - 1 &&
                                 ((action is TextInsert && actions[i + 1] is Click) ||
                                         action is Swipe)
