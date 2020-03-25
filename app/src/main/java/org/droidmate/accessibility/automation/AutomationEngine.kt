@@ -155,6 +155,8 @@ open class AutomationEngine(
     suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
         Log.i(TAG, "Launching app $appPackageName and waiting $launchActivityDelay ms for it to start")
         var success = false
+        // Go back to home
+        pressHome()
         // Launch the app
         val intent = context.packageManager
             .getLaunchIntentForPackage(appPackageName)
