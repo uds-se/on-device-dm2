@@ -39,6 +39,7 @@ import org.droidmate.accessibility.automation.utils.debugEnabled
 import org.droidmate.accessibility.automation.utils.debugOut
 import org.droidmate.accessibility.automation.utils.debugT
 import org.droidmate.accessibility.automation.utils.measurePerformance
+import org.droidmate.accessibility.exploration.OnDeviceApk
 import org.droidmate.accessibility.exploration.OnDeviceConfigurationBuilder
 import org.droidmate.accessibility.exploration.OnDeviceExploration
 import org.droidmate.command.ExploreCommandBuilder
@@ -115,23 +116,22 @@ open class AutomationEngine(
     }
 
     fun run() = launch {
+        val apk = OnDeviceApk(targetPackage)
         setupDevice()
-        exploration.setup()
+        exploration.setup(apk)
 
         supervisorScope {
-            exploration.execute()
+            while (!canceled) {
+                Log.d(TAG, "Continuing loop, waiting for idle")
+                waitForIdle()
+                Log.d(TAG, "Idle, acting")
+                canceled = exploration.explorationLoop(apk)
+                Log.d(TAG, "Acted, repeating loop")
+            }
+
+            exploration.onFinished()
+            exploration.getExplorationResult()
         }
-
-        /* var actionNr = 0
-        while (!canceled) {
-            Log.d(TAG, "Continuing loop, waiting for idle")
-            waitForIdle()
-            Log.d(TAG, "Idle, acting")
-            act(actionNr)
-            Log.d(TAG, "Acted, repeating loop")
-
-            actionNr += 1
-        } */
     }
 
     /*

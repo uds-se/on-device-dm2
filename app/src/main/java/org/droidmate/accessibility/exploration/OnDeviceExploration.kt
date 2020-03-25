@@ -1,5 +1,6 @@
 package org.droidmate.accessibility.exploration
 
+import com.natpryce.konfig.ConfigurationProperties
 import java.nio.file.Files
 import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineName
@@ -49,8 +50,19 @@ open class OnDeviceExploration<M, S, W>(
     }
 
     private val sysCmdExecutor: ISysCmdExecutor by lazy { SysCmdExecutor() }
+    private lateinit var explorationContext: ExplorationContext<M, S, W>
+    // Construct initial action and execute it on the device to obtain initial result.
+    var action: ExplorationAction = EmptyAction
+    lateinit var result: ActionResult
+    var isFirst = true
 
-    suspend fun setup() {
+    private val strategyScheduler by lazy {
+        strategyProvider.apply {
+            init(cfg, explorationContext)
+        }
+    }
+
+    suspend fun setup(app: IApk) {
         if (cfg[cleanDirs]) {
             cleanOutputDir(cfg)
         }
@@ -64,17 +76,25 @@ open class OnDeviceExploration<M, S, W>(
         }
 
         assert(Files.exists(reportDir)) { "Unable to create report directory ($reportDir)" }
+
+        // initialize the config and clear the 'currentModel' from the provider if any
+        val modelConfig = ConfigurationProperties.fromFile(OnDeviceConfigurationBuilder.configFile)
+        modelProvider.init(ModelConfig(modelConfig, appName = AutomationEngine.targetPackage, cfg = cfg))
+        // Use the received exploration eContext (if any) otherwise construct the object that
+        // will hold the exploration output and that will be returned from this method.
+        // Note that a different eContext is created for each exploration if none it provider
+        val adbWrapper = OnDeviceAdbWrapper(sysCmdExecutor)
+        explorationContext = ExplorationContext(
+            cfg,
+            app,
+            { adbWrapper.readStatements() },
+            LocalDateTime.now(),
+            watcher = watcher,
+            model = modelProvider.get()
+        )
     }
 
-    suspend fun execute(): FailableExploration {
-        val apk = OnDeviceApk(AutomationEngine.targetPackage)
-        val explorationData = explorationLoop(apk)
-        onFinalFinished()
-        log.info("Writing reports finished.")
-        return explorationData
-    }
-
-    private suspend fun onFinalFinished() = coroutineScope {
+    suspend fun onFinished() = coroutineScope {
         // we use coroutineScope here to ensure that this function waits for all coroutines spawned within this method
         watcher.forEach { feature ->
             (feature as? ModelFeature)?.let {
@@ -84,6 +104,7 @@ open class OnDeviceExploration<M, S, W>(
                 }
             }
         }
+        log.info("Writing reports finished.")
     }
 
     private fun cleanOutputDir(cfg: ConfigurationWrapper) {
@@ -142,43 +163,16 @@ open class OnDeviceExploration<M, S, W>(
         assert(ret)
     }
 
-    private suspend fun explorationLoop(app: IApk): FailableExploration {
-        log.debug("explorationLoop(app=${app.packageName})")
+    suspend fun explorationLoop(app: IApk): Boolean {
+        log.debug("explorationLoop(app=${app.packageName}) - time: " + explorationContext.explorationStartTime)
 
-        // initialize the config and clear the 'currentModel' from the provider if any
-        modelProvider.init(ModelConfig(appName = AutomationEngine.targetPackage, cfg = cfg))
-        // Use the received exploration eContext (if any) otherwise construct the object that
-        // will hold the exploration output and that will be returned from this method.
-        // Note that a different eContext is created for each exploration if none it provider
-        val adbWrapper = OnDeviceAdbWrapper(sysCmdExecutor)
-        val explorationContext = ExplorationContext(
-            cfg,
-            app,
-            { adbWrapper.readStatements() },
-            LocalDateTime.now(),
-            watcher = watcher,
-            model = modelProvider.get()
-        )
-
-        log.debug("Exploration start time: " + explorationContext.explorationStartTime)
-
-        // Construct initial action and execute it on the device to obtain initial result.
-        var action: ExplorationAction = EmptyAction
-        var result: ActionResult
-        // var capturedPreviously = false
-
-        var isFirst = true
-
-        val strategyScheduler = strategyProvider.apply { init(cfg, explorationContext) }
         try {
             // Execute the exploration loop proper, starting with the values of initial reset action and its result.
-            while (isFirst || !action.isTerminate()) {
+            if (isFirst || !action.isTerminate()) {
                 try {
-                    automationEngine.waitForIdle()
-
                     // decide for an action
-                    action =
-                        strategyScheduler.nextAction(explorationContext) // check if we need to initialize timeProvider.getNow() here
+                    // check if we need to initialize timeProvider.getNow() here
+                    action = strategyScheduler.nextAction(explorationContext)
                     // execute action
                     result = action.execute(app, automationEngine)
 
@@ -195,11 +189,9 @@ open class OnDeviceExploration<M, S, W>(
                     if (!result.successful && exception !is DeviceExceptionMissing) {
                         explorationContext.exceptions.add(exception)
                     }
-
-                    // FIXME this should be only an assert in the feature requiring this i.e. the specific model features
-// 					assert(!explorationContext.apk.launchableMainActivityName.isBlank()) { "launchedMainActivityName was Blank" }
                 } catch (e: Throwable) {
-                    // the decide call of a strategy may issue an exception e.g. when trying to interact on non-actable elements
+                    // the decide call of a strategy may issue an exception e.g. when trying to
+                    // interact on non-actable elements
                     log.error(
                         "Exception during exploration\n" +
                                 " ${e.localizedMessage}", e
@@ -207,20 +199,24 @@ open class OnDeviceExploration<M, S, W>(
                     explorationContext.exceptions.add(e)
                     explorationContext.launchApp().execute(app, automationEngine)
                 }
-            } // end loop
+            }
 
-            explorationContext.explorationEndTime = LocalDateTime.now()
-            explorationContext.verify() // some result validation do this in the end of exploration for this app
-            // but within the catch block to NOT terminate other explorations and to NOT loose the derived context
-        } catch (e: Throwable) { // the loop handles internal error if possible, however if the launchApp after exception fails we end in this catch
-            // this means likely the uiAutomator is dead or we lost device connection
+            return action.isTerminate()
+        } catch (e: Throwable) {
+            // the loop handles internal error if possible, however if the launchApp after
+            // exception fails we end in this catch this means likely the uiAutomator is dead
+            // or we lost device connection
             log.error("unhandled device exception \n ${e.localizedMessage}", e)
             explorationContext.exceptions.add(e)
             strategyScheduler.close()
+            return true
         } finally {
             explorationContext.close()
         }
+    }
 
+    fun getExplorationResult(): FailableExploration {
+        explorationContext.explorationEndTime = LocalDateTime.now()
         return FailableExploration(explorationContext, explorationContext.exceptions)
     }
 }

@@ -24,9 +24,6 @@ import org.droidmate.misc.EnvironmentConstants
 import org.slf4j.LoggerFactory
 
 class OnDeviceConfigurationBuilder : IConfigurationBuilder {
-    private val configFile =
-        File(Environment.getExternalStorageDirectory().path + "/defaultConfig.properties")
-
     @Throws(ConfigurationException::class)
     override fun build(cmdLineConfig: Configuration, fs: FileSystem): ConfigurationWrapper {
         val defaultConfig = ConfigurationProperties.fromFile(configFile)
@@ -391,14 +388,15 @@ class OnDeviceConfigurationBuilder : IConfigurationBuilder {
     companion object {
         private val log by lazy { LoggerFactory.getLogger(ConfigurationBuilder::class.java) }
 
-        @JvmStatic
+        val configFile =
+            File(Environment.getExternalStorageDirectory().path + "/defaultConfig.properties")
+
         private fun memoizedBuildConfiguration(cfg: Configuration, fs: FileSystem): ConfigurationWrapper {
             log.debug("memoizedBuildConfiguration(args, fileSystem)")
 
             return bindAndValidate(ConfigurationWrapper(cfg, fs))
         }
 
-        @JvmStatic
         @Throws(ConfigurationException::class)
         private fun bindAndValidate(config: ConfigurationWrapper): ConfigurationWrapper {
             try {
@@ -414,13 +412,11 @@ class OnDeviceConfigurationBuilder : IConfigurationBuilder {
             return config
         }
 
-        @JvmStatic
         private fun normalizeAndroidApi(config: ConfigurationWrapper) {
             // Currently supports only API23 as configuration (works with API 24, 25 and 26 as well)
             assert(config[ConfigProperties.Exploration.apiVersion] == ConfigurationWrapper.api23)
         }
 
-        @JvmStatic
         private fun validateExplorationSettings(cfg: ConfigurationWrapper) {
             validateExplorationStrategySettings(cfg)
 
@@ -435,14 +431,12 @@ class OnDeviceConfigurationBuilder : IConfigurationBuilder {
                             "The searched apks dir path: ${cfg.getPath(cfg[ConfigProperties.Exploration.apksDir]).toAbsolutePath()}")
         }
 
-        @JvmStatic
         private fun validateExplorationStrategySettings(cfg: ConfigurationWrapper) {
             if (cfg[ConfigProperties.Selectors.randomSeed] == -1L) {
                 log.info("Generated random seed: ${cfg.randomSeed}")
             }
         }
 
-        @JvmStatic
         @Throws(ConfigurationException::class)
         private fun setupResourcesAndPaths(cfg: ConfigurationWrapper) {
             cfg.droidmateOutputDirPath = cfg.getPath(cfg[ConfigProperties.Output.outputDir]).toAbsolutePath()
@@ -479,9 +473,7 @@ class OnDeviceConfigurationBuilder : IConfigurationBuilder {
          * To keep the source DRY, we use apache's ReflectionToStringBuilder, which gets the field names and values using
          * reflection.
          */
-        @JvmStatic
         private fun logConfigurationInEffect(config: Configuration) {
-
             // The customized display style strips the output of any data except the field name=value pairs.
             val displayStyle = StandardToStringStyle()
             displayStyle.isArrayContentDetail = true

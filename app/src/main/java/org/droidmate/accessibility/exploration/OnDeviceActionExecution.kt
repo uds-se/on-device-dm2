@@ -4,7 +4,6 @@ import java.time.LocalDateTime
 import kotlin.math.max
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.droidmate.accessibility.automation.AutomationEngine
 import org.droidmate.accessibility.automation.execute
 import org.droidmate.device.android_sdk.IApk
@@ -96,10 +95,7 @@ private suspend fun defaultExecution(
     isSecondTry: Boolean = false
 ): Unit = coroutineScope {
     try {
-        launch {
-            // do the perform as launch to inject a suspension point, as perform is currently no suspend function
-            snapshot = action.execute(automationEngine)
-        }.join()
+        snapshot = action.execute(automationEngine)
     } catch (e: Exception) {
         log.warn("Failed to perform $action, retry once")
         delay(1000)
