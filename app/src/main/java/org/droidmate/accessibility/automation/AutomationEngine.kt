@@ -79,7 +79,6 @@ open class AutomationEngine(
     CoroutineScope {
     companion object {
         var targetPackage = ""
-        val screenshotPermissionChannel = Channel<Intent>()
     }
 
     var canceled = false
@@ -133,47 +132,6 @@ open class AutomationEngine(
             exploration.getExplorationResult()
         }
     }
-
-    /*
-    private suspend fun act(actionNr: Int) {
-        val displayedWindows = getDisplayedWindows()
-        if (displayedWindows.none {
-                it.w.pkgName.contains(targetPackage)
-            }) {
-            launchApp(targetPackage, 500)
-        } else {
-            Log.d("droidmate/performance", "Here")
-            debugT("----------Act($actionNr)", {
-                val deviceData = debugT("fetch device data", {
-                    windowEngine.fetchDeviceData(actionNr)
-                }, inMillis = true)
-                val widgets = deviceData.widgets
-                val target = widgets
-                    .filter { it.clickable }
-                    .random(random)
-                Log.w(TAG, "target: $target")
-                debugT("click event", {
-                    clickEvent(ClickEvent(target.idHash))
-                }, inMillis = true)
-                // longClickEvent(LongClickEvent(target.idHash))
-                // minimizeMaximize()
-                // tick(Tick(target.idHash,
-                //    target.boundaries.center.first,
-                //    target.boundaries.center.second))
-                // pressBack()
-                // pressHome()
-                // pressEnter()
-
-                /*val appWindow = displayedWindows.first {
-                it.w.pkgName.contains("ch.bailu.aat")
-            }
-            val x = random.nextInt(appWindow.bounds.width())
-            val y = random.nextInt(appWindow.bounds.height())
-            click(Click(x, y))*/
-            }, inMillis = true)
-        }
-    }
-    */
 
     suspend fun waitForIdle() {
         notificationChannel.receive()
