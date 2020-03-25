@@ -44,7 +44,7 @@ suspend fun ExplorationAction.execute(env: AutomationEngine): DeviceResponse {
             val result = debugT("execute action avg= ${tExec / (max(nActions, 1) * 1000000)}",
                 {
                     lastId = this.id
-                    this.execute(env)
+                    this.performAction(env)
                 },
                 inMillis = true,
                 timer = {
@@ -64,7 +64,7 @@ suspend fun ExplorationAction.execute(env: AutomationEngine): DeviceResponse {
                     }
                 )
             else {
-                result
+                result as DeviceResponse
             }
         }, inMillis = true, timer = {
             et += it / 1000000.0
