@@ -125,7 +125,7 @@ open class AutomationEngine(
                 Log.d(TAG, "Continuing loop, waiting for idle")
                 waitForIdle()
                 Log.d(TAG, "Idle, acting")
-                canceled = exploration.explorationLoop(apk)
+                canceled = canceled or exploration.explorationLoop(apk)
                 Log.d(TAG, "Acted, repeating loop")
             }
 
