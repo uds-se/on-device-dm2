@@ -60,7 +60,7 @@ open class CoroutineScheduler(
     private suspend fun runListener() {
         while (!isCanceled) {
             val timeStamp = accessibilityEventChannel.receive()
-            Log.d(
+            Log.v(
                 TAG, "Accessibility event with time $timeStamp received. " +
                     "Current timestamp = ${SystemClock.uptimeMillis()}")
             lastTimestamp.set(SystemClock.uptimeMillis())
@@ -68,23 +68,23 @@ open class CoroutineScheduler(
     }
 
     private suspend fun runScheduledTask(delayInterval: Long) {
-        Log.d(TAG, "Scheduling task with interval of $delayInterval ms")
+        Log.v(TAG, "Scheduling task with interval of $delayInterval ms")
         while (!isCanceled) {
             // Determine how long we should wait
             val delayTime = delayInterval - (SystemClock.uptimeMillis() - lastTimestamp.get())
-            Log.d(TAG, "Delaying scheduled task for $delayTime ms")
+            Log.v(TAG, "Delaying scheduled task for $delayTime ms")
             // Wait
             delay(delayTime)
 
             mutex.withLock {
-                Log.d(TAG, "(Locked) Checking if scheduled task must run")
+                Log.v(TAG, "(Locked) Checking if scheduled task must run")
                 // Check the expected timestamp
                 val expectedTimestamp = lastTimestamp.get() + delayTime
 
                 // If we are after the expected timestamp, notify idle
                 val currentTime = SystemClock.uptimeMillis()
                 if (currentTime > expectedTimestamp) {
-                    Log.d(TAG, "(Locked) Scheduled task must run, notifying channel")
+                    Log.v(TAG, "(Locked) Scheduled task must run, notifying channel")
                     // lastTimestamp.set(currentTime)
                     idleNotificationChannel.send(currentTime)
                 }
@@ -93,23 +93,23 @@ open class CoroutineScheduler(
     }
 
     private suspend fun runScheduledTimeout(delayInterval: Long) {
-        Log.d(TAG, "Scheduling timeout task with interval of $delayInterval ms")
+        Log.v(TAG, "Scheduling timeout task with interval of $delayInterval ms")
         while (!isCanceled) {
             // Determine how long we should wait
             val delayTime = delayInterval - (SystemClock.uptimeMillis() - lastTimeout.get())
-            Log.d(TAG, "Delaying timeout for for $delayTime ms")
+            Log.v(TAG, "Delaying timeout for for $delayTime ms")
             // Wait
             delay(delayTime)
 
             mutex.withLock {
-                Log.d(TAG, "(Locked) Checking if timeout task must run")
+                Log.v(TAG, "(Locked) Checking if timeout task must run")
                 // Check the expected timestamp
                 val expectedTimestamp = lastTimeout.get() + delayTime
 
                 // If We are after the expected timestamp, update the timestamp and notify idle
                 val currentTime = SystemClock.uptimeMillis()
                 if (currentTime > expectedTimestamp) {
-                    Log.d(TAG, "(Locked) Timeout task must run, notifying channel")
+                    Log.v(TAG, "(Locked) Timeout task must run, notifying channel")
                     lastTimestamp.set(currentTime)
                     lastTimeout.set(currentTime)
                     idleNotificationChannel.send(currentTime)
