@@ -10,7 +10,6 @@ import org.droidmate.device.android_sdk.IApk
 import org.droidmate.device.error.DeviceException
 import org.droidmate.device.error.DeviceExceptionMissing
 import org.droidmate.deviceInterface.exploration.ActionQueue
-import org.droidmate.deviceInterface.exploration.ActionType
 import org.droidmate.deviceInterface.exploration.DeviceResponse
 import org.droidmate.deviceInterface.exploration.ExplorationAction
 import org.droidmate.deviceInterface.exploration.LaunchApp
@@ -29,17 +28,18 @@ private var performN: Int = 0
 
 private suspend fun performAction(action: ExplorationAction, automationEngine: AutomationEngine) {
     when {
-        action.name == ActionType.Terminate.name -> automationEngine.terminate()
         action is LaunchApp || (action is ActionQueue && action.actions.any { it is LaunchApp }) -> {
             defaultExecution(action, automationEngine)
         }
-        else -> debugT("perform $action on average ${performT / max(performN, 1)} ms", {
-            if (action is ActionQueue) check(action.actions.isNotEmpty()) { "ERROR your strategy should never decide for EMPTY ActionQueue" }
-            defaultExecution(action, automationEngine)
-        }, timer = {
-            performT += it / 1000000
-            performN += 1
-        }, inMillis = true)
+        else -> {
+            debugT("perform $action on average ${performT / max(performN, 1)} ms", {
+                if (action is ActionQueue) check(action.actions.isNotEmpty()) { "ERROR your strategy should never decide for EMPTY ActionQueue" }
+                defaultExecution(action, automationEngine)
+            }, timer = {
+                performT += it / 1000000
+                performN += 1
+            }, inMillis = true)
+        }
     }
 }
 

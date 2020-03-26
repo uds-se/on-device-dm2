@@ -95,8 +95,7 @@ private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any 
                 ActionType.EnableWifi -> env.enableWifi()
                 ActionType.MinimizeMaximize -> env.minimizeMaximize()
                 ActionType.FetchGUI -> env.fetchDeviceData(this.id, afterAction = false)
-                /* should never be transferred to the device */
-                ActionType.Terminate -> false
+                ActionType.Terminate -> env.terminateExploration()
                 ActionType.PressEnter -> env.pressEnter()
                 ActionType.CloseKeyboard -> if (env.isKeyboardOpen()) {
                     env.pressBack()

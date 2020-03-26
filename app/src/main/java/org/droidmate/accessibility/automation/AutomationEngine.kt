@@ -1,16 +1,15 @@
 package org.droidmate.accessibility.automation
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Path
 import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.os.RemoteException
+import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -121,13 +120,14 @@ open class AutomationEngine(
 
         supervisorScope {
             while (!canceled) {
-                Log.d(TAG, "Continuing loop, waiting for idle")
+                Log.v(TAG, "Continuing loop, waiting for idle")
                 waitForIdle()
-                Log.d(TAG, "Idle, acting")
+                Log.v(TAG, "Idle, acting")
                 canceled = canceled or exploration.explorationLoop(apk)
-                Log.d(TAG, "Acted, repeating loop")
+                Log.v(TAG, "Acted, repeating loop")
             }
 
+            terminate()
             exploration.onFinished()
             exploration.getExplorationResult()
         }
@@ -150,6 +150,15 @@ open class AutomationEngine(
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
+    }
+
+    fun terminateExploration() {
+        // Go back to home
+        pressHome()
+        // Open the accessibility setting again for the user to disable the accessibility app
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        context.startActivity(intent)
     }
 
     suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
@@ -225,27 +234,12 @@ open class AutomationEngine(
         }
     }
 
-    fun coordinateClick(x: Int, y: Int, duration: Long = 500) {
-        Log.i(TAG, "Clicking on coordinate ($x, $y) with a duration of $duration ms")
-        if (api < Build.VERSION_CODES.N) {
-            return
-        }
-
-        val path = Path()
-        path.moveTo(x.toFloat(), y.toFloat())
-        val builder = GestureDescription.Builder()
-        val gestureDescription = builder
-            .addStroke(GestureDescription.StrokeDescription(path, 10, duration))
-            .build()
-        service.dispatchGesture(gestureDescription, null, null)
-    }
-
     suspend fun click(action: Click): Boolean {
         if (api < Build.VERSION_CODES.N) {
             return false
         }
         windowEngine.verifyCoordinate(action.x, action.y)
-        coordinateClick(action.x, action.y)
+        service.dispatchGesture(Gestures.createClick(action.x, action.y), null, null)
         delay(action.delay)
         return true
     }
@@ -330,7 +324,7 @@ open class AutomationEngine(
         }
         if (!success) {
             windowEngine.verifyCoordinate(action.x, action.y)
-            coordinateClick(action.x, action.y)
+            service.dispatchGesture(Gestures.createClick(action.x, action.y), null, null)
         }
         delay(action.delay)
         return success
@@ -341,7 +335,7 @@ open class AutomationEngine(
             return false
         }
         windowEngine.verifyCoordinate(action.x, action.y)
-        coordinateClick(action.x, action.y, 1000)
+        service.dispatchGesture(Gestures.createLongClick(action.x, action.y), null, null)
         delay(action.delay)
         return true
     }
