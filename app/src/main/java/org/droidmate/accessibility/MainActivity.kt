@@ -16,6 +16,7 @@ import androidx.core.app.ActivityCompat
 import com.facebook.drawee.backends.pipeline.Fresco
 import org.droidmate.accessibility.automation.AutomationEngine
 import org.droidmate.accessibility.automation.screenshot.ScreenRecorder
+import org.droidmate.misc.SysCmdExecutor
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -32,6 +33,7 @@ class MainActivity : AppCompatActivity() {
         appList.adapter = appAdapter
 
         appList.onItemClickListener = OnItemClickListener { _, _, _, l ->
+            SysCmdExecutor().execute("Cleaning logcat before exploration", "logcat", "-c")
             AutomationEngine.targetPackage = appAdapter.getItem(l.toInt()).packageName
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK

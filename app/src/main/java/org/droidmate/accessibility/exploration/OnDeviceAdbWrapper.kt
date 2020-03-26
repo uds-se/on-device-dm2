@@ -1,5 +1,7 @@
 package org.droidmate.accessibility.exploration
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import org.droidmate.device.android_sdk.AdbWrapperException
 import org.droidmate.device.logcat.TimeFormattedLogcatMessage
 import org.droidmate.deviceInterface.communication.TimeFormattedLogMessageI
@@ -10,9 +12,13 @@ import org.slf4j.LoggerFactory
 
 class OnDeviceAdbWrapper(private val sysCmdExecutor: ISysCmdExecutor) {
     companion object {
-        @JvmStatic
         private val log: Logger by lazy { LoggerFactory.getLogger(OnDeviceAdbWrapper::class.java) }
+
+        private val logcatTimeInputFormat = DateTimeFormatter.ofPattern("MM-dd HH:mm:ss.SSS")
     }
+
+    private var lastStatementTime: LocalDateTime? = null
+
     /**
      * Command line explanation:
      * -d      : Dumps the logcat to the screen and exits.
@@ -27,14 +33,22 @@ class OnDeviceAdbWrapper(private val sysCmdExecutor: ISysCmdExecutor) {
      * [1] http://developer.android.com/tools/help/logcat.html
      * [2] http://developer.android.com/tools/debugging/debugging-log.html#outputFormat
      */
-    private fun readMessagesFromLogcat(messageTag: String): List<String> {
+    private fun readMessagesFromLogcat(messageTag: String, minTimeStamp: LocalDateTime?): List<String> {
         try {
             val commandDescription =
                 "Executing adb (Android Debug Bridge) to read from logcat messages tagged: $messageTag"
 
-            val stdStreams = sysCmdExecutor.execute(
-                commandDescription, "logcat", "-d", "-b", "main", "-v", "time", "*:s", messageTag
+            val command = mutableListOf(
+                "logcat", "-d", "-b", "main", "-v", "time", "-s", "'$messageTag'"
             )
+
+            if (minTimeStamp != null) {
+                val formattedTimeStamp = logcatTimeInputFormat.format(minTimeStamp)
+                command.add("-t")
+                command.add("'$formattedTimeStamp'")
+            }
+
+            val stdStreams = sysCmdExecutor.execute(commandDescription, *command.toTypedArray())
 
             return stdStreams[0]
                 .split(System.lineSeparator())
@@ -45,28 +59,36 @@ class OnDeviceAdbWrapper(private val sysCmdExecutor: ISysCmdExecutor) {
         }
     }
 
-    fun readLogcatMessages(messageTag: String): List<TimeFormattedLogMessageI> {
+    @Suppress("SameParameterValue")
+    private fun readLogcatMessages(
+        messageTag: String,
+        minTimeStamp: LocalDateTime?
+    ): List<TimeFormattedLogMessageI> {
         log.debug("readLogcatMessages(tag: $messageTag)")
-        val messages = readMessagesFromLogcat(messageTag)
+        val messages = readMessagesFromLogcat(messageTag, minTimeStamp)
         return messages.map { TimeFormattedLogcatMessage.from(it) }
     }
 
     fun readStatements(): List<List<String>> {
         log.debug("readStatements()")
 
-        /*try {
-            val messages = this.tcpClients.getStatements()
+        /*return try {
+            val messages = readLogcatMessages("Runtime", lastStatementTime)
+            val coverageMessages = messages
+                .filter { it.messagePayload.contains("DM2Coverage") }
 
-            messages.forEach { msg ->
-                assert(msg.size == 2) { "Expected 2 messages, received ${msg.size}" }
-                assert(msg[0].isNotEmpty()) { "First part of the statement payload was empty" }
-                assert(msg[1].isNotEmpty()) { "Second part of the statement payload was empty" }
+            if (coverageMessages.isNotEmpty()) {
+                lastStatementTime = coverageMessages.last().time
             }
 
-            return messages
-        } catch (e: ApkExplorationException) {
-            AndroidDevice.log.error("Error reading statements from monitor TCP server. Proceeding with exploration ${e.message}", e)
-            return emptyList()
+            coverageMessages
+                .map {
+                    val data = it.messagePayload.split(": ")
+                    listOf(data.dropLast(1).last(), data.last())
+                }
+        } catch (e: Exception) {
+            log.error("Error reading statements from logcat. Proceeding with exploration ${e.message}", e)
+            emptyList()
         }*/
 
         return emptyList()
