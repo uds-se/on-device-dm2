@@ -20,4 +20,4 @@ adb push app/src/main/res/defaultConfig.properties /sdcard/
 
 1. The app works better on Android 10, as the accessibility service seems to be more stable
 
-2. The results are stored on ``/sdcard/DM-2/`
+2. The results are stored on `/sdcard/DM-2/`
