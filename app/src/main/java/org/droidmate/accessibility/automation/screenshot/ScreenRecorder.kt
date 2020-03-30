@@ -62,9 +62,12 @@ class ScreenRecorder private constructor(
     private val bitmapChannel = Channel<Bitmap?>()
 
     private val imgDir: File by lazy {
-        Environment.getExternalStorageDirectory()
+        val dir = Environment.getExternalStorageDirectory()
             .resolve("DM-2")
             .resolve("images")
+
+        dir.mkdirs()
+        dir
     }
 
     private var wt = 0.0
