@@ -39,10 +39,10 @@ android {
 dependencies {
     implementation "com.github.hotzkow:platformInterfaceLib:2.4.2"
     implementation 'com.github.Hotzkow:explorationModel:nataniel-SNAPSHOT'
-    implementation('com.github.uds-se.droidmate:core:master-SNAPSHOT') {
+    implementation('com.github.uds-se.droidmate:core:test-SNAPSHOT') {
         exclude( module: "explorationModel" )
     }
-    implementation('com.github.uds-se.droidmate:exploration:master-SNAPSHOT') {
+    implementation('com.github.uds-se.droidmate:exploration:test-SNAPSHOT') {
         exclude( module: "explorationModel" )
     }
 
