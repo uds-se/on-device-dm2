@@ -34,6 +34,7 @@ class ScreenRecorder private constructor(
     private val imgQuality: Int = 10,
     private val delayedImgTransfer: Boolean = false
 ) : HandlerThread("screenRecorderThread"), IScreenshotEngine, CoroutineScope {
+
     companion object {
         private val TAG = ScreenRecorder::class.java.simpleName
         var instance: ScreenRecorder? = null
@@ -105,6 +106,7 @@ class ScreenRecorder private constructor(
             // handler.sendEmptyMessage(MESSAGE_TAKE_SCREENSHOT)
             handler.sendEmptyMessage(MESSAGE_START)
             runBlocking {
+                ioScope.coroutineContext[Job]?.children?.forEach { it.join() }
                 bitmap = bitmapChannel.receive()
 
                 ioScope.launch {
@@ -146,6 +148,7 @@ class ScreenRecorder private constructor(
      * storing these asynchronous and transferring them later is available via configuration
      */
     override fun getOrStoreImgPixels(bm: Bitmap?, actionId: Int): ByteArray {
+        runBlocking { ioScope.coroutineContext[Job]?.children?.forEach { it.join() } }
         return debugT("wait for screen avg = ${wt / max(1, wc)}", {
             when { // if we couldn't capture screenshots
                 bm == null -> {
