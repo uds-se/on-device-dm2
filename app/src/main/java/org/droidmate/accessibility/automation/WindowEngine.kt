@@ -276,7 +276,7 @@ class WindowEngine(
                             uiHierarchy.findAndPerform(listOf(root),
                                 keyboardEngine.selectKeyboardRoot(dim.height/3, dim.width, dim.height),  // keyboard should never cover more then 2/3 of the screen height
                                 retry = false,
-                                action = { node -> outRect = node.getBounds(dim.width, dim.height);
+                                action = { node -> outRect = node.getBounds(dim.width, dim.height)
                                     true
                                 })
                     }
@@ -377,14 +377,18 @@ class WindowEngine(
                 screenshotEngine.getOrStoreImgPixels(img)
             }, inMillis = true)
 
+            @Suppress("CanBeVal")
             var xml: String =
                 "TODO parse widget list on Pc if we need the XML or introduce a debug property to enable parsing" +
                         ", because (currently) we would have to traverse the tree a second time"
+            /**
+            /** create XML for debug purposes (right now this issues a second invocation of the UI parser) */
             if (false) { // if (debugEnabled) {
                 xml = debugT("building window XML", {
                     uiHierarchy.getXml(this@WindowEngine)
                 }, inMillis = true)
             }
+            */
 
             lastResponse = DeviceResponse.create(
                 isSuccessful = isSuccessful,
