@@ -270,19 +270,15 @@ class WindowEngine(
                 // this is necessary since newly appearing keyboards may otherwise take the whole screen and
                 // thus screw up our visibility analysis
                 if (keyboardEngine.isKeyboard(root)) {
-                    uncoveredC.firstOrNull()?.let { r ->
-                        outRect.intersect(r)
-                        if (outRect == r) { // wrong keyboard boundaries reported
-                            Log.d(TAG, "try to handle soft keyboard in front with $outRect")
+                    val dim = getDisplayDimension()
+                    if (outRect.top<=dim.height/3) {  // wrong keyboard boundaries reported
+                        Log.d(TAG, "try to handle soft keyboard in front with $outRect")
                             uiHierarchy.findAndPerform(listOf(root),
-                                keyboardEngine.selectKeyboardRoot(r.top + 1, r.width(), r.height()),
+                                keyboardEngine.selectKeyboardRoot(dim.height/3, dim.width, dim.height),  // keyboard should never cover more then 2/3 of the screen height
                                 retry = false,
-                                action = { node ->
-                                    outRect = node.getBounds(r.width(), r.height())
+                                action = { node -> outRect = node.getBounds(dim.width, dim.height)
                                     true
-                                }
-                            )
-                        }
+                                })
                     }
                 }
                 Log.d(
@@ -381,14 +377,18 @@ class WindowEngine(
                 screenshotEngine.getOrStoreImgPixels(img)
             }, inMillis = true)
 
+            @Suppress("CanBeVal")
             var xml: String =
                 "TODO parse widget list on Pc if we need the XML or introduce a debug property to enable parsing" +
                         ", because (currently) we would have to traverse the tree a second time"
+            /**
+            /** create XML for debug purposes (right now this issues a second invocation of the UI parser) */
             if (false) { // if (debugEnabled) {
                 xml = debugT("building window XML", {
                     uiHierarchy.getXml(this@WindowEngine)
                 }, inMillis = true)
             }
+            */
 
             lastResponse = DeviceResponse.create(
                 isSuccessful = isSuccessful,
