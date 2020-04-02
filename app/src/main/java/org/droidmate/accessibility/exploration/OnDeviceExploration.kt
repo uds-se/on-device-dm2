@@ -83,7 +83,7 @@ open class OnDeviceExploration<M, S, W>(
         // Use the received exploration eContext (if any) otherwise construct the object that
         // will hold the exploration output and that will be returned from this method.
         // Note that a different eContext is created for each exploration if none it provider
-        val adbWrapper = OnDeviceAdbWrapper(sysCmdExecutor)
+        val adbWrapper = OnDeviceAdbWrapper()
         explorationContext = ExplorationContext(
             cfg,
             app,
