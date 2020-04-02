@@ -57,6 +57,7 @@ class WindowEngine(
         get() = mLastWindows
 
     override var lastResponse: DeviceResponse = DeviceResponse.empty
+
     // Will be updated during the run, when the right command is sent (i.e. on AppLaunch)
     override var launchedMainActivity: String = ""
 
@@ -271,14 +272,21 @@ class WindowEngine(
                 // thus screw up our visibility analysis
                 if (keyboardEngine.isKeyboard(root)) {
                     val dim = getDisplayDimension()
-                    if (outRect.top<=dim.height/3) {  // wrong keyboard boundaries reported
+                    // wrong keyboard boundaries reported
+                    // keyboard should never cover more then 2/3 of the screen height
+                    if (outRect.top <= dim.height / 3) {
                         Log.d(TAG, "try to handle soft keyboard in front with $outRect")
-                            uiHierarchy.findAndPerform(listOf(root),
-                                keyboardEngine.selectKeyboardRoot(dim.height/3, dim.width, dim.height),  // keyboard should never cover more then 2/3 of the screen height
-                                retry = false,
-                                action = { node -> outRect = node.getBounds(dim.width, dim.height)
-                                    true
-                                })
+                        uiHierarchy.findAndPerform(listOf(root),
+                            keyboardEngine.selectKeyboardRoot(
+                                dim.height / 3,
+                                dim.width,
+                                dim.height
+                            ),
+                            retry = false,
+                            action = { node ->
+                                outRect = node.getBounds(dim.width, dim.height)
+                                true
+                            })
                     }
                 }
                 Log.d(
@@ -384,11 +392,11 @@ class WindowEngine(
             /**
             /** create XML for debug purposes (right now this issues a second invocation of the UI parser) */
             if (false) { // if (debugEnabled) {
-                xml = debugT("building window XML", {
-                    uiHierarchy.getXml(this@WindowEngine)
-                }, inMillis = true)
+            xml = debugT("building window XML", {
+            uiHierarchy.getXml(this@WindowEngine)
+            }, inMillis = true)
             }
-            */
+             */
 
             lastResponse = DeviceResponse.create(
                 isSuccessful = isSuccessful,
