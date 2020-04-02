@@ -45,12 +45,12 @@ dependencies {
         exclude( module: "logback-classic" )
         exclude( module: "logback-core" )
     }
-    implementation('com.github.uds-se.droidmate:core:test-SNAPSHOT') {
+    implementation('com.github.uds-se.droidmate:core:master-SNAPSHOT') {
         exclude( module: "explorationModel" )
         exclude( module: "logback-classic" )
         exclude( module: "logback-core" )
     }
-    implementation('com.github.uds-se.droidmate:exploration:test-SNAPSHOT') {
+    implementation('com.github.uds-se.droidmate:exploration:master-SNAPSHOT') {
         exclude( module: "explorationModel" )
         exclude( module: "logback-classic" )
         exclude( module: "logback-core" )
