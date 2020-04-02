@@ -173,6 +173,7 @@ open class AutomationEngine(
             .getLaunchIntentForPackage(appPackageName)
 
         // Clear out any previous instances
+        intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
         // Update environment
