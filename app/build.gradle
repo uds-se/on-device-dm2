@@ -37,13 +37,23 @@ android {
 }
 
 dependencies {
-    implementation "com.github.hotzkow:platformInterfaceLib:2.4.2"
-    implementation 'com.github.Hotzkow:explorationModel:nataniel-SNAPSHOT'
+    implementation("com.github.hotzkow:platformInterfaceLib:2.4.2") {
+        exclude( module: "logback-classic" )
+        exclude( module: "logback-core" )
+    }
+    implementation('com.github.Hotzkow:explorationModel:nataniel-SNAPSHOT') {
+        exclude( module: "logback-classic" )
+        exclude( module: "logback-core" )
+    }
     implementation('com.github.uds-se.droidmate:core:test-SNAPSHOT') {
         exclude( module: "explorationModel" )
+        exclude( module: "logback-classic" )
+        exclude( module: "logback-core" )
     }
     implementation('com.github.uds-se.droidmate:exploration:test-SNAPSHOT') {
         exclude( module: "explorationModel" )
+        exclude( module: "logback-classic" )
+        exclude( module: "logback-core" )
     }
 
     implementation "androidx.appcompat:appcompat:1.1.0"
@@ -55,7 +65,7 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2"
 
     implementation 'org.apache.commons:commons-lang3:3.8'
-    implementation 'org.slf4j:slf4j-api:1.7.25'
+    implementation 'org.slf4j:slf4j-android:1.7.7'
 
     implementation "com.facebook.fresco:fresco:2.1.0"
 
