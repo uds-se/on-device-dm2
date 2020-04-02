@@ -95,6 +95,8 @@ open class OnDeviceExploration<M, S, W>(
     }
 
     suspend fun onFinished() = coroutineScope {
+        explorationContext.close()
+
         // we use coroutineScope here to ensure that this function waits for all coroutines spawned within this method
         watcher.forEach { feature ->
             (feature as? ModelFeature)?.let {
@@ -210,8 +212,6 @@ open class OnDeviceExploration<M, S, W>(
             explorationContext.exceptions.add(e)
             strategyScheduler.close()
             return true
-        } finally {
-            explorationContext.close()
         }
     }
 

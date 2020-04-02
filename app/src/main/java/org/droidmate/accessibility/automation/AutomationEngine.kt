@@ -119,17 +119,19 @@ open class AutomationEngine(
         exploration.setup(apk)
 
         supervisorScope {
-            while (!canceled) {
-                Log.v(TAG, "Continuing loop, waiting for idle")
-                waitForIdle()
-                Log.v(TAG, "Idle, acting")
-                canceled = canceled or exploration.explorationLoop(apk)
-                Log.v(TAG, "Acted, repeating loop")
+            try {
+                while (!canceled) {
+                    Log.v(TAG, "Continuing loop, waiting for idle")
+                    waitForIdle()
+                    Log.v(TAG, "Idle, acting")
+                    canceled = canceled or exploration.explorationLoop(apk)
+                    Log.v(TAG, "Acted, repeating loop")
+                }
+            } finally {
+                terminate()
+                exploration.onFinished()
+                exploration.getExplorationResult()
             }
-
-            terminate()
-            exploration.onFinished()
-            exploration.getExplorationResult()
         }
     }
 
