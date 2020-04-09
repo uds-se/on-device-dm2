@@ -1,11 +1,11 @@
-echo "Usage: ./launch.sh <APK_DIR> <OUT_DIR> [<NUM_RUNS> (default 1]"
+echo "Usage: ./launch.sh <APK_DIR> <OUT_DIR> [<DM_APK>] [<NUM_RUNS> (default 1)]"
 
 DEFAULT_SLEEP=5
 APK_DIR=$1
 OUT_DIR=$2
 NUM_RUNS=$3 || 1
+DM=$4 || ../app/build/outputs/apk/release/app-release.apk
 APP=$(ls -a $APK_DIR/*.apk | sort | head -1)
-DM=../app/build/outputs/apk/release/app-release.apk
 
 ./uninstall_apk.sh "$APP" || true
 
