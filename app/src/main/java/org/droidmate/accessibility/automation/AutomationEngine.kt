@@ -8,12 +8,14 @@ import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.RemoteException
 import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.io.IOException
+import java.nio.file.Files
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
 import kotlin.system.measureTimeMillis
@@ -78,6 +80,9 @@ open class AutomationEngine(
     CoroutineScope {
     companion object {
         var targetPackage = ""
+        private val explorationDoneFile = Environment.getExternalStorageDirectory().toPath()
+            .resolve("DM-2")
+            .resolve("exploration.done")
     }
 
     var canceled = false
@@ -152,6 +157,12 @@ open class AutomationEngine(
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
+
+        try {
+            Files.deleteIfExists(explorationDoneFile)
+        } catch (e: IOException) {
+            // Couldn't delete the file
+        }
     }
 
     fun terminateExploration() {
@@ -161,6 +172,12 @@ open class AutomationEngine(
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         context.startActivity(intent)
+
+        try {
+            Files.createFile(explorationDoneFile)
+        } catch (e: IOException) {
+            // Couldn't create the file
+        }
     }
 
     suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
@@ -172,7 +189,7 @@ open class AutomationEngine(
         val intent = context.packageManager
             .getLaunchIntentForPackage(appPackageName)
 
-        // Clear out any previous instances
+        // Clear out any previous instances, otherwise it just reopens the app on the same screen
         intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
         // Update environment
@@ -203,8 +220,13 @@ open class AutomationEngine(
         return success
     }
 
-    suspend fun minimizeMaximize(): Boolean {
-        val currentPackage = activeAppPackage
+    private fun String.isRuntimePermission(): Boolean {
+        return listOf("com.android.packageinstaller:id/", "com.android.permissioncontroller:id/")
+            .any { this.startsWith(it) }
+    }
+
+    suspend fun minimizeMaximize(packageName: String? = null): Boolean {
+        val currentPackage = packageName ?: activeAppPackage
         Log.d(TAG, "Minimizing and maximizing current package $currentPackage")
 
         pressRecentApps()
@@ -220,7 +242,7 @@ open class AutomationEngine(
             debugT("waitForIdle", { waitForIdle() }, inMillis = true)
 
             Log.d(TAG, "Current package name $activeAppPackage")
-            if (activeAppPackage == currentPackage)
+            if (activeAppPackage == currentPackage || activeAppPackage.isRuntimePermission())
                 break
         }
 
