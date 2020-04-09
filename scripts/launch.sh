@@ -74,6 +74,7 @@ do
         RESULT=$(adb shell "[ -f /sdcard/DM-2/exploration.done ] || echo 1")
         [[ $RESULT == 1 ]] || break
         # Break after 3h
+        TOTAL_TIME=$((TOTAL_TIME+30))
         if ((TOTAL_TIME > 10800)); then break; fi
         echo "Waiting DM-2 to finish";
     done
