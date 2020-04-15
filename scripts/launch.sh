@@ -28,7 +28,7 @@ do
     /test/uninstall_apk.sh $DM || true
 
     echo "Removing old DM-2 files on device"
-    adb shell rm -rf /sdcard/DM-2
+    adb shell rm -rf /sdcard/DM-2 || true
 
     # Push config
     adb push defaultConfig.properties /sdcard/
@@ -37,15 +37,6 @@ do
     adb install $DM
     adb install $DMLAUNCHER_BASE
     adb install $DMLAUNCHER
-
-    # Force some window updates to prevent errors when launching the app
-    echo "Launching search"
-    adb shell input keyevent 84
-    sleep $DEFAULT_SLEEP
-
-    echo "Pressing home"
-    adb shell input keyevent 3
-    sleep $DEFAULT_SLEEP
 
     # Launch app
     echo "Launching app"
