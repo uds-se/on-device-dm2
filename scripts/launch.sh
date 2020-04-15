@@ -1,20 +1,15 @@
 echo "Usage: ./launch.sh <APK_DIR> <OUT_DIR> [<DM_APK>] [<NUM_RUNS> (default 1)]"
 
-DEFAULT_SLEEP=5
-APK_DIR=$1
-OUT_DIR=$2
-NUM_RUNS=$3 || 1
-DM=$4 || ../app/build/outputs/apk/release/app-release.apk
+DEFAULT_SLEEP=30
+APK_DIR=/test/experiment/apks
+OUT_DIR=/test/experiment/out
+NUM_RUNS=10
+DM=/test/app-release.apk
+DMLAUNCHER_BASE=/test/launcher.apk
+DMLAUNCHER=/test/launcher-test.apk
 APP=$(ls -a $APK_DIR/*.apk | sort | head -1)
 
-./uninstall_apk.sh "$APP" || true
-
-./uninstall_apk.sh $DM || true
-
 sleep $DEFAULT_SLEEP
-
-# Push config
-adb push defaultConfig.properties /sdcard/
 
 echo "Creating output dir $OUT_DIR"
 mkdir $OUT_DIR
@@ -22,11 +17,26 @@ mkdir $OUT_DIR
 #!/bin/bash
 for ((i=0; i<NUM_RUNS; i++))
 do
+    echo "Stopping emulator"
+    /test/stopEmu.sh
+
+    echo "Starting the emulator"
+    /test/startEmu.sh
+
+    /test/uninstall_apk.sh "$APP" || true
+
+    /test/uninstall_apk.sh $DM || true
+
     echo "Removing old DM-2 files on device"
     adb shell rm -rf /sdcard/DM-2
 
+    # Push config
+    adb push defaultConfig.properties /sdcard/
+
     adb install "$APP"
     adb install $DM
+    adb install $DMLAUNCHER_BASE
+    adb install $DMLAUNCHER
 
     # Force some window updates to prevent errors when launching the app
     echo "Launching search"
@@ -39,32 +49,8 @@ do
 
     # Launch app
     echo "Launching app"
-    adb shell am start -n "org.droidmate.accessibility/org.droidmate.accessibility.MainActivity" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -D
+    adb shell am instrument -w -r -e class 'com.example.dm2launcher.StartDMTest' com.example.dm2launcher.test/androidx.test.runner.AndroidJUnitRunner
     sleep $DEFAULT_SLEEP
-
-    echo "Click runtime permission \"allow\" [691,1017][876,1143]"
-    adb shell input tap 700 1050
-    sleep $DEFAULT_SLEEP
-
-    echo "Click \"start now\" for screen recording [711,1005][978,1131]"
-    adb shell input tap 750 1100
-    sleep $DEFAULT_SLEEP
-
-    # Click on app
-    echo "Click on app"
-    adb shell input tap 500 300
-    sleep $DEFAULT_SLEEP
-
-    echo "Click on accessibility in the menu"
-    adb shell input tap 500 600
-    sleep $DEFAULT_SLEEP
-
-    echo "Click on toggle to activate app"
-    adb shell input tap 1000 300
-    sleep $DEFAULT_SLEEP
-
-    echo "Click on ok to start accessibility [810,1258][978,1384]"
-    adb shell input tap 850 1300
 
     # Wait exploration to complete
     TOTAL_TIME=0
@@ -103,13 +89,16 @@ do
     adb shell input keyevent 4
     sleep $DEFAULT_SLEEP
 
-    ./uninstall_apk.sh $DM || true
-
-    ./uninstall_apk.sh "$APP" || true
+    /test/uninstall_apk.sh $DM || true
+    /test/uninstall_apk.sh "$APP" || true
+    /test/uninstall_apk.sh $DMLAUNCHER_BASE || true
+    /test/uninstall_apk.sh $DMLAUNCHER || true
 
     echo "Pulling results"
     adb pull /sdcard/DM-2/ $OUT_DIR/$i
 
+    chmod 777 $OUT_DIR/$i
 done
 
+chmod -R 777 $OUT_DIR
 echo "Done"
