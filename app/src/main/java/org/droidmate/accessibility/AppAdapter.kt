@@ -17,7 +17,7 @@ class AppAdapter(context: Context) : BaseAdapter() {
         val packageManager = context.packageManager
         val packages = packageManager.getInstalledPackages(GET_META_DATA)
         packages
-            .filterNot { it.isSystemPackage() || it.isMyself() }
+            .filterNot { it.isSystemPackage() || it.isMyself() || it.isDMLauncher() }
             .map {
                 App(
                     it.applicationInfo.loadLabel(packageManager).toString(),
@@ -29,6 +29,10 @@ class AppAdapter(context: Context) : BaseAdapter() {
 
     private fun PackageInfo.isSystemPackage(): Boolean {
         return applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0
+    }
+
+    private fun PackageInfo.isDMLauncher(): Boolean {
+        return applicationInfo.packageName.startsWith("com.example.dm2launcher")
     }
 
     private fun PackageInfo.isMyself(): Boolean {
