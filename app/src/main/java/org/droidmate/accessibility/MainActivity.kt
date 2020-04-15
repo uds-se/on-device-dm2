@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestScreenRecordingPermission() {
+        Log.v(TAG, "Requesting screen recording permission")
         val mediaProjectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
@@ -76,12 +77,14 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
+        Log.v(TAG, "Screen recording permission returned. Result is $resultCode")
         val mediaProjectionIntent = if (resultCode == Activity.RESULT_OK && data != null) {
             data
         } else {
             throw RuntimeException("Unable to obtain screen recording permission")
         }
 
+        Log.v(TAG, "Starting screen recording")
         val screenRecorder = ScreenRecorder.new(this, mediaProjectionIntent)
         screenRecorder.start()
 
