@@ -12,7 +12,7 @@
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
             <layout class="ch.qos.logback.classic.html.HTMLLayout">
-                <pattern>%d{HH:mm:ss.SSS}%thread%level%class%msg</pattern>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS}%thread%level%class%msg</pattern>
             </layout>
         </encoder>
         <file>/sdcard/DM-2/log-${myTimestamp}.html</file>
