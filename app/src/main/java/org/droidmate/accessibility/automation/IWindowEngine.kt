@@ -18,11 +18,15 @@ interface IWindowEngine : IEngine {
 
     fun verifyCoordinate(x: Int, y: Int)
 
+    fun getDisplayDimension(): DisplayDimension
     fun getDisplayRotation(): Int
+    suspend fun getDisplayedAppWindows(): List<DisplayedWindow>
     suspend fun getDisplayedWindows(): List<DisplayedWindow>
 
     // FIXME for the apps with interaction issues, check if we need different window types here
     suspend fun getAppRootNodes(): List<AccessibilityNodeInfo>
+
+    suspend fun getRootNodes(): List<AccessibilityNodeInfo>
 
     suspend fun isKeyboardOpen(): Boolean
 

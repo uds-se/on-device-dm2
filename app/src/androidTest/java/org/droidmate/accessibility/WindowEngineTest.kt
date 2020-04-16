@@ -66,7 +66,7 @@ class WindowEngineTest {
     @Test
     fun displayedWindowsTest() {
         runBlockingTest {
-            val windows = windowEngine.getDisplayedWindows()
+            val windows = windowEngine.getDisplayedAppWindows()
             assertTrue("No windows found", windows.isNotEmpty())
         }
     }

@@ -95,18 +95,26 @@ class WindowEngine(
             throw IllegalStateException("Error: Displayed Windows could not be extracted $windows")
         }
 
+        return windows
+    }
+
+    override suspend fun getDisplayedAppWindows(): List<DisplayedWindow> {
+        val windows = getDisplayedWindows()
         return windows.filterNot { it.isLauncher }
     }
 
     // FIXME for the apps with interaction issues, check if we need different window types here
-    override suspend fun getAppRootNodes() = getDisplayedWindows()
+    override suspend fun getAppRootNodes(): List<AccessibilityNodeInfo> = getDisplayedAppWindows()
         .mapNotNull { if (it.isApp() || it.isKeyboard) it.rootNode else null }
 
-    override suspend fun isKeyboardOpen(): Boolean = getDisplayedWindows()
+    override suspend fun getRootNodes(): List<AccessibilityNodeInfo> = getDisplayedWindows()
+        .mapNotNull { it.rootNode }
+
+    override suspend fun isKeyboardOpen(): Boolean = getDisplayedAppWindows()
         .any { it.isKeyboard }
 
     // FIXME for some reason this does not report the pixels of the system navigation bar in the bottom of the display
-    private fun getDisplayDimension(): DisplayDimension {
+    override fun getDisplayDimension(): DisplayDimension {
         debugOut("get display dimension", false)
         val p = Point()
         wmService.defaultDisplay.getRealSize(p)
@@ -326,7 +334,7 @@ class WindowEngine(
             // waitForSync(env,afterAction)
 
             var windows = debugT("fetch - get displayed windows", {
-                getDisplayedWindows()
+                getDisplayedAppWindows()
             }, inMillis = true)
             var isSuccessful = true
 
@@ -348,7 +356,7 @@ class WindowEngine(
                             "first ui extraction failed or no interactive elements were found " +
                                     "\n $it, \n ---> start a second try"
                         )
-                        windows = getDisplayedWindows()
+                        windows = getDisplayedAppWindows()
                         img = screenshotEngine.takeScreenshot(actionNr)
                         val secondRes = uiHierarchy.fetch(windows, img)
                         Log.d(TAG, "second try resulted in ${secondRes?.size} elements")

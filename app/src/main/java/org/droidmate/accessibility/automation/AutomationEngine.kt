@@ -3,6 +3,7 @@ package org.droidmate.accessibility.automation
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.media.AudioManager
 import android.net.wifi.WifiManager
@@ -180,11 +181,15 @@ open class AutomationEngine(
         }
     }
 
-    suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
-        Log.i(TAG, "Launching app $appPackageName and waiting $launchActivityDelay ms for it to start")
-        var success = false
-        // Go back to home
-        pressHome()
+    private fun getAppName(appPackageName: String): String? {
+        val packageManager = context.packageManager
+        val app = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+            .firstOrNull { it.packageName == appPackageName }
+
+        return app?.applicationInfo?.loadLabel(packageManager)?.toString()
+    }
+
+    private suspend fun launchAppFallback(appPackageName: String, launchActivityDelay: Long) {
         // Launch the app
         val intent = context.packageManager
             .getLaunchIntentForPackage(appPackageName)
@@ -199,21 +204,63 @@ open class AutomationEngine(
             ""
         }
         debugOut("determined launch-able main activity for pkg=$launchedMainActivity", debugFetch)
+        context.startActivity(intent)
+        delay(launchActivityDelay)
+        uiHierarchy.waitFor(this, interactiveTimeout, UiSelector.actionableAppElem)
+    }
+
+    suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
+        Log.i(TAG, "Launching app $appPackageName and waiting $launchActivityDelay ms for it to start")
+        var success = false
+        // Go back to home
+        pressHome()
+        delay(500)
 
         val loadTime = measureTimeMillis {
-            context.startActivity(intent)
-
             // Wait for the app to appear
-//            wait(Until.hasObject(By.pkg(appPackageName).depth(0)), waitTime)
+            val dimensions = windowEngine.getDisplayDimension()
+            val width = dimensions.width
+            val height = dimensions.height
 
-            delay(launchActivityDelay)
-            success = uiHierarchy.waitFor(this, interactiveTimeout, UiSelector.actableAppElem)
+            val swipeX = width / 2
+            val startSwipeY = (height * 0.9).toInt()
+            val endSwipeY = (height * 0.3).toInt()
 
-            // mute audio after app launch (for very annoying apps we may need a contentObserver listening on audio setting changes)
-            val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0)
-            audio.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
-            audio.adjustStreamVolume(AudioManager.STREAM_ALARM, AudioManager.ADJUST_MUTE, 0)
+            val swipe = Gestures.createSwipe(swipeX, startSwipeY, swipeX, endSwipeY, 1000)
+            // Gesture is asynchronously dispatched
+            service.dispatchGesture(swipe, null, null)
+
+            val appLabel = getAppName(appPackageName)
+
+            if (appLabel == null) {
+                // If couldn't find an icon, use fallback
+                launchAppFallback(appPackageName, launchActivityDelay)
+            } else {
+                val appEntry: SelectorCondition =
+                    { node, _ ->
+                        node.text?.contains(appLabel) ?: false
+                    }
+                uiHierarchy.waitFor(this, launchActivityDelay, appEntry)
+                uiHierarchy.findAndPerform(this, appEntry) { nodeInfo ->
+                    Log.d(TAG, "Clicking on menu entry")
+                    nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                }
+
+                delay(launchActivityDelay)
+                success =
+                    uiHierarchy.waitFor(this, interactiveTimeout, UiSelector.actionableAppElem)
+
+                if (!success) {
+                    // If couldn't launch the app, try fallback strategy
+                    launchAppFallback(appPackageName, launchActivityDelay)
+                }
+
+                // mute audio after app launch (for very annoying apps we may need a contentObserver listening on audio setting changes)
+                val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0)
+                audio.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
+                audio.adjustStreamVolume(AudioManager.STREAM_ALARM, AudioManager.ADJUST_MUTE, 0)
+            }
         }
 
         Log.d(TAG, "TIME: load-time $loadTime millis")
@@ -393,6 +440,10 @@ open class AutomationEngine(
 
     fun pressEnter() {
         sendKeyEvent(KeyEvent.KEYCODE_ENTER)
+    }
+
+    fun pressSearch() {
+        sendKeyEvent(KeyEvent.KEYCODE_SEARCH)
     }
 
     fun sendKeyEvent(keyCode: Int) {

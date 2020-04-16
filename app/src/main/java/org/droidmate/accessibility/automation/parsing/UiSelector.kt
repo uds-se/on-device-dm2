@@ -11,14 +11,16 @@ object UiSelector {
     @JvmStatic
     val permissionRequest: SelectorCondition =
         { node, _ -> node.viewIdResourceName == "com.android.packageinstaller:id/permission_allow_button" }
+
     @JvmStatic
     val ignoreSystemElem: SelectorCondition =
         { node, _ ->
             node.viewIdResourceName?.let { !it.startsWith("com.android.systemui") } ?: false
         }
+
     // TODO check if need special case for packages "com.android.chrome" ??
     @JvmStatic
-    val isActable: SelectorCondition = { it, _ ->
+    val isActionable: SelectorCondition = { it, _ ->
         it.isEnabled &&
                 it.isVisibleToUser &&
                 (it.isClickable ||
@@ -30,12 +32,11 @@ object UiSelector {
     }
 
     @JvmStatic
-    val actableAppElem = { node: AccessibilityNodeInfo, xpath: String ->
-        UiSelector.ignoreSystemElem(node, xpath) && !isWebView(
-            node,
-            xpath
-        ) && // look for internal elements instead of WebView layouts
-                (UiSelector.isActable(node, xpath) || UiSelector.permissionRequest(node, xpath))
+    val actionableAppElem = { node: AccessibilityNodeInfo, xpath: String ->
+        // look for internal elements instead of WebView layouts
+        ignoreSystemElem(node, xpath) &&
+                !isWebView(node, xpath) &&
+                (isActionable(node, xpath) || permissionRequest(node, xpath))
     }
 }
 

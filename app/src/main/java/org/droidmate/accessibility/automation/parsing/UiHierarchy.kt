@@ -138,7 +138,7 @@ class UiHierarchy : UiParser() {
         action: suspend (AccessibilityNodeInfo) -> Boolean
     ): Boolean {
         return debugT("find and perform", {
-            findAndPerform(engine.getAppRootNodes(), cond, retry, action)
+            findAndPerform(engine.getRootNodes(), cond, retry, action)
         }, inMillis = true)
     }
 

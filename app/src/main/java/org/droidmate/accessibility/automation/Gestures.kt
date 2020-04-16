@@ -58,7 +58,7 @@ object Gestures {
         endX: Int,
         endY: Int,
         duration: Long
-    ): GestureDescription? {
+    ): GestureDescription {
         val swipePath = Path()
         swipePath.moveTo(startX.toFloat(), startY.toFloat())
         swipePath.lineTo(endX.toFloat(), endY.toFloat())
@@ -92,7 +92,7 @@ object Gestures {
         endSpacing: Int,
         orientation: Float,
         duration: Long
-    ): GestureDescription? {
+    ): GestureDescription {
         require(!(startSpacing < 0 || endSpacing < 0)) {
             "Pinch spacing cannot be negative"
         }
