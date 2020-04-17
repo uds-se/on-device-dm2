@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.AdapterView.OnItemClickListener
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
@@ -15,12 +16,10 @@ import androidx.core.app.ActivityCompat
 import com.facebook.drawee.backends.pipeline.Fresco
 import org.droidmate.accessibility.automation.AutomationEngine
 import org.droidmate.accessibility.automation.screenshot.ScreenRecorder
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 class MainActivity : AppCompatActivity() {
     companion object {
-        private val log: Logger by lazy { LoggerFactory.getLogger(MainActivity::class.java) }
+        internal val TAG = MainActivity::class.java.simpleName
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,17 +45,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkStoragePermission(): Boolean {
         return if (checkSelfPermission(WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            log.trace("Permission is granted")
+            Log.v(TAG, "Permission is granted")
             true
         } else {
-            log.trace("Permission is revoked")
+            Log.v(TAG, "Permission is revoked")
             ActivityCompat.requestPermissions(this, arrayOf(WRITE_EXTERNAL_STORAGE), 1)
             false
         }
     }
 
     private fun requestScreenRecordingPermission() {
-        log.trace("Requesting screen recording permission")
+        Log.v(TAG, "Requesting screen recording permission")
         val mediaProjectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
@@ -70,7 +69,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED) {
-            log.trace("Permission: ${permissions.first()} was ${grantResults.first()}")
+            Log.v(TAG, "Permission: ${permissions.first()} was ${grantResults.first()}")
             requestScreenRecordingPermission()
         }
     }
@@ -78,9 +77,9 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        log.trace("Screen recording permission returned. Result is $resultCode")
+        Log.v(TAG, "Screen recording permission returned. Result is $resultCode")
         if (resultCode == Activity.RESULT_OK && data != null) {
-            log.trace("Starting screen recording")
+            Log.v(TAG, "Starting screen recording")
             val screenRecorder = ScreenRecorder.new(this, data)
             screenRecorder.start()
 
@@ -88,22 +87,22 @@ class MainActivity : AppCompatActivity() {
                 Thread.sleep(10)
             }
         } else {
-            log.error("Unable to obtain screen recording permission")
+            Log.e(TAG, "Unable to obtain screen recording permission")
         }
     }
 
     /*private fun debug() {
         var bmp: Bitmap? = null
         measureTimeMillis { bmp = screenRecorder.takeScreenshot() }
-            .let { log.d("waited $it millis for screenshot") }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
         saveScreenshot(bmp, "a")
 
 
         measureTimeMillis { bmp = screenRecorder.takeScreenshot() }
-            .let { log.d("waited $it millis for screenshot") }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
         saveScreenshot(bmp, "b")
         measureTimeMillis { bmp = screenRecorder.takeScreenshot() }
-            .let { log.d("waited $it millis for screenshot") }
+            .let { Log.d(TAG, "waited $it millis for screenshot") }
         saveScreenshot(bmp, "c")
         screenRecorder.quit()
     }
@@ -117,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         d.deleteRecursively()
         if (!d.exists()) {
             d.mkdirs()
-            log.d(IEngine.TAG, "Image directory: $d exists: ${d.exists()}")
+            Log.d(IEngine.TAG, "Image directory: $d exists: ${d.exists()}")
         }
 
         d
