@@ -1,6 +1,5 @@
 package org.droidmate.accessibility
 
-import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.math.abs
 import kotlin.system.measureTimeMillis
@@ -13,11 +12,13 @@ import org.droidmate.accessibility.automation.utils.backgroundScope
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 @RunWith(AndroidJUnit4::class)
 class SchedulerTest {
     companion object {
-        private val TAG = SchedulerTest::class.java.simpleName
+        private val log: Logger by lazy { LoggerFactory.getLogger(SchedulerTest::class.java) }
     }
 
     private suspend fun testScheduler(maxElapsedTime: Long, timeout: Boolean) {
@@ -44,9 +45,9 @@ class SchedulerTest {
                 notificationChannel.receive()
             }
 
-            Log.d(TAG, "Elapsed time until callback: $elapsedTime ms")
+            log.debug("Elapsed time until callback: $elapsedTime ms")
             val diff = abs(elapsedTime - maxElapsedTime)
-            Log.d(TAG, "Difference from target: $diff ms")
+            log.debug("Difference from target: $diff ms")
             assertTrue("Scheduler did not run in $maxElapsedTime", diff < 15)
             if (mutex.isLocked) {
                 mutex.unlock()
