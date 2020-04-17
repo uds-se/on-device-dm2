@@ -38,6 +38,25 @@ object UiSelector {
                 !isWebView(node, xpath) &&
                 (isActionable(node, xpath) || permissionRequest(node, xpath))
     }
+
+    @JvmStatic
+    val isHomeScreen: SelectorCondition =
+        { node, _ ->
+            when {
+                node.packageName?.contains("systemui") ?: false -> true
+                node.packageName?.contains("android.launcher") ?: false -> true
+                else -> false
+            }
+        }
+
+    @JvmStatic
+    val isSearch: SelectorCondition =
+        { node, _ ->
+            when {
+                node.packageName?.contains("com.google.android.googlequicksearchbox") ?: false -> true
+                else -> false
+            }
+        }
 }
 
 typealias SelectorCondition = (AccessibilityNodeInfo, xPath: String) -> Boolean

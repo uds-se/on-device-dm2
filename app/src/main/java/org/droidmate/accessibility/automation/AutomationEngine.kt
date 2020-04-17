@@ -21,6 +21,7 @@ import kotlin.random.Random
 import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -32,6 +33,8 @@ import org.droidmate.accessibility.automation.parsing.SelectorCondition
 import org.droidmate.accessibility.automation.parsing.UiHierarchy
 import org.droidmate.accessibility.automation.parsing.UiParser
 import org.droidmate.accessibility.automation.parsing.UiSelector
+import org.droidmate.accessibility.automation.parsing.UiSelector.isHomeScreen
+import org.droidmate.accessibility.automation.parsing.UiSelector.isSearch
 import org.droidmate.accessibility.automation.screenshot.IScreenshotEngine
 import org.droidmate.accessibility.automation.screenshot.ScreenRecorder
 import org.droidmate.accessibility.automation.utils.api
@@ -191,78 +194,48 @@ open class AutomationEngine(
         return app?.applicationInfo?.loadLabel(packageManager)?.toString()
     }
 
-    private suspend fun launchAppFallback(appPackageName: String, launchActivityDelay: Long) {
-        // Launch the app
-        val intent = context.packageManager
-            .getLaunchIntentForPackage(appPackageName)
-
-        // Clear out any previous instances, otherwise it just reopens the app on the same screen
-        intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-
-        // Update environment
-        launchedMainActivity = try {
-            intent?.component?.className ?: ""
-        } catch (e: IllegalStateException) {
-            ""
-        }
-        debugOut("determined launch-able main activity for pkg=$launchedMainActivity", debugFetch)
-        context.startActivity(intent)
-        delay(launchActivityDelay)
-        uiHierarchy.waitFor(this, interactiveTimeout, UiSelector.actionableAppElem)
-    }
-
     suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
         log.info("Launching app $appPackageName and waiting $launchActivityDelay ms for it to start")
         var success = false
         // Go back to home
         pressHome()
-        delay(500)
+        uiHierarchy.waitFor(this, launchActivityDelay, isHomeScreen)
+        // Force a transition to prevent the app from getting stuck in the background
+        pressSearch()
+        uiHierarchy.waitFor(this, launchActivityDelay, isSearch)
+        // Go back home
+        pressHome()
+        uiHierarchy.waitFor(this, launchActivityDelay, isHomeScreen)
 
+        // Launch app
         val loadTime = measureTimeMillis {
-            // Wait for the app to appear
-            val dimensions = windowEngine.getDisplayDimension()
-            val width = dimensions.width
-            val height = dimensions.height
+            // Launch the app
+            val intent = context.applicationContext.packageManager
+                .getLaunchIntentForPackage(appPackageName)
 
-            val swipeX = width / 2
-            val startSwipeY = (height * 0.9).toInt()
-            val endSwipeY = (height * 0.3).toInt()
+            // Clear out any previous instances, otherwise it just reopens the app on the same screen
+            intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
-            val swipe = Gestures.createSwipe(swipeX, startSwipeY, swipeX, endSwipeY, 1000)
-            // Gesture is asynchronously dispatched
-            service.dispatchGesture(swipe, null, null)
-
-            val appLabel = getAppName(appPackageName)
-
-            if (appLabel == null) {
-                // If couldn't find an icon, use fallback
-                launchAppFallback(appPackageName, launchActivityDelay)
-            } else {
-                val appEntry: SelectorCondition =
-                    { node, _ ->
-                        node.text?.contains(appLabel) ?: false
-                    }
-                uiHierarchy.waitFor(this, launchActivityDelay, appEntry)
-                uiHierarchy.findAndPerform(this, appEntry) { nodeInfo ->
-                    log.debug("Clicking on menu entry")
-                    nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                }
-
-                delay(launchActivityDelay)
-                success =
-                    uiHierarchy.waitFor(this, interactiveTimeout, UiSelector.actionableAppElem)
-
-                if (!success) {
-                    // If couldn't launch the app, try fallback strategy
-                    launchAppFallback(appPackageName, launchActivityDelay)
-                }
-
-                // mute audio after app launch (for very annoying apps we may need a contentObserver listening on audio setting changes)
-                val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0)
-                audio.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
-                audio.adjustStreamVolume(AudioManager.STREAM_ALARM, AudioManager.ADJUST_MUTE, 0)
+            // Update environment
+            launchedMainActivity = try {
+                intent?.component?.className ?: ""
+            } catch (e: IllegalStateException) {
+                ""
             }
+            debugOut("determined launch-able main activity for pkg=$launchedMainActivity", debugFetch)
+            GlobalScope.launch(Dispatchers.Main) {
+                context.startActivity(intent)
+            }
+            delay(launchActivityDelay)
+            success = uiHierarchy.waitFor(this, interactiveTimeout, UiSelector.actionableAppElem)
+            log.trace("Fallback app launch strategy succeeded = $success")
+
+            // mute audio after app launch (for very annoying apps we may need a contentObserver listening on audio setting changes)
+            val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0)
+            audio.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
+            audio.adjustStreamVolume(AudioManager.STREAM_ALARM, AudioManager.ADJUST_MUTE, 0)
+            // }
         }
 
         log.debug("TIME: load-time $loadTime millis")
