@@ -79,18 +79,16 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         log.trace("Screen recording permission returned. Result is $resultCode")
-        val mediaProjectionIntent = if (resultCode == Activity.RESULT_OK && data != null) {
-            data
+        if (resultCode == Activity.RESULT_OK && data != null) {
+            log.trace("Starting screen recording")
+            val screenRecorder = ScreenRecorder.new(this, data)
+            screenRecorder.start()
+
+            while (!screenRecorder.isInitialized()) {
+                Thread.sleep(10)
+            }
         } else {
-            throw RuntimeException("Unable to obtain screen recording permission")
-        }
-
-        log.trace("Starting screen recording")
-        val screenRecorder = ScreenRecorder.new(this, mediaProjectionIntent)
-        screenRecorder.start()
-
-        while (!screenRecorder.isInitialized()) {
-            Thread.sleep(10)
+            log.error("Unable to obtain screen recording permission")
         }
     }
 
