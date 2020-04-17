@@ -144,10 +144,14 @@ class WindowEngine(
         val activeRoot = service.rootInActiveWindow
 
         if (activeRoot != null && windows.none { it.id == activeRoot.windowId }) {
+            log.debug("Active root with windowId=${activeRoot.windowId}, but without window, refocusing")
+            activeRoot.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
             activeRoot.refresh()
 
-            if (activeRoot.window != null)
+            if (activeRoot.window != null) {
+                log.debug("Active root now has a window. Proceeding")
                 windows.add(0, activeRoot.window)
+            }
         }
 
         var count = 0
