@@ -67,6 +67,7 @@ abstract class UiParser {
         // case the fetch should return success=false or retry to fetch
         val children: List<UiElementProperties?> = (nChildren - 1 downTo 0)
             .map { i -> Pair(i, node.getChild(i)) }
+            .filter { i -> i.second != null }
             // REMARK we use drawing order but sometimes there is a transparent layout in front of the elements,
             // probably used by the apps to determine their app area (e.g. amazon), this has to be considered in
             // the [visibleAxis] call for the window area
