@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import org.droidmate.accessibility.automation.utils.backgroundScope
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.lang.Exception
 
 open class TestService : AccessibilityService() {
     companion object {
@@ -27,9 +28,16 @@ open class TestService : AccessibilityService() {
     override fun onServiceConnected() {
         log.info("Service connected")
 
-        if (!scheduler.isRunning) {
-            automationEngine.run()
-            scheduler.start()
+        try {
+            if (!scheduler.isRunning) {
+                automationEngine.run()
+                scheduler.start()
+            }
+        } catch (e: Exception) {
+            log.error("Failed to start DM", e)
+            automationEngine.canceled = true
+            scheduler.isCanceled = true
+            disableSelf()
         }
     }
 
