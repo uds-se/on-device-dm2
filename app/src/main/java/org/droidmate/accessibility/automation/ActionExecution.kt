@@ -1,6 +1,5 @@
 package org.droidmate.accessibility.automation
 
-import android.util.Log
 import android.view.KeyEvent
 import java.lang.Integer.max
 import org.droidmate.accessibility.automation.exceptions.DeviceDaemonException
@@ -21,8 +20,11 @@ import org.droidmate.deviceInterface.exploration.Scroll
 import org.droidmate.deviceInterface.exploration.Swipe
 import org.droidmate.deviceInterface.exploration.TextInsert
 import org.droidmate.deviceInterface.exploration.Tick
+import org.slf4j.LoggerFactory
 
-private const val TAG = DeviceConstants.deviceLogcatTagPrefix + "ActionExecution"
+private val log by lazy {
+    LoggerFactory.getLogger("${DeviceConstants.deviceLogcatTagPrefix}ActionExecution")
+}
 
 var lastId = 0
 var isWithinQueue = false
@@ -33,13 +35,13 @@ private var tExec = 0L
 private var et = 0.0
 
 suspend fun ExplorationAction.execute(env: AutomationEngine): DeviceResponse {
-    Log.v(TAG, "Executing action: ($nActions) $this")
+    log.trace("Executing action: ($nActions) $this")
 
     return try {
         debugT(" EXECUTE-TIME avg = ${et / max(1, nActions)}", {
             isWithinQueue = false
 
-            Log.v(TAG, "Performing GUI action $this [${this.id}]")
+            log.trace("Performing GUI action $this [${this.id}]")
 
             val result = debugT("execute action avg= ${tExec / (max(nActions, 1) * 1000000)}",
                 {
@@ -71,8 +73,8 @@ suspend fun ExplorationAction.execute(env: AutomationEngine): DeviceResponse {
             nActions += 1
         })
     } catch (e: Throwable) {
-        Log.e(TAG, "Error: " + e.message)
-        Log.e(TAG, "Printing stack trace for debug")
+        log.error("Error: " + e.message)
+        log.error("Printing stack trace for debug")
         e.printStackTrace()
 
         ErrorResponse(e)
@@ -80,7 +82,7 @@ suspend fun ExplorationAction.execute(env: AutomationEngine): DeviceResponse {
 }
 
 private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any {
-    Log.d(TAG, "START execution ${toString()}($id)")
+    log.debug("START execution ${toString()}($id)")
     // REMARK this has to be an assignment for when to check for exhaustiveness
     val result: Any = when (this) {
         is Click -> env.click(this)
@@ -130,7 +132,7 @@ private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any 
                                         action is Swipe)
                             ) {
                                 if (action is Swipe) {
-                                    Log.d(TAG, "delay after swipe")
+                                    log.debug("delay after swipe")
                                     kotlinx.coroutines.delay(delay)
                                 }
 
@@ -149,7 +151,7 @@ private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any 
         }
         else -> throw DeviceDaemonException("not implemented action $name was called in exploration/ActionExecution")
     }
-    Log.d(TAG, "END execution of ${toString()} ($id)")
+    log.debug("END execution of ${toString()} ($id)")
     return result
 }
 
@@ -166,7 +168,7 @@ private suspend fun waitForSync(env: AutomationEnvironment, afterAction: Boolean
 //		env.device.waitForIdle(env.idleTimeout) // this has a minimal delay of 500ms between events until the device is considered idle
 		}, inMillis = true,
 			timer = {
-				Log.d(logTag, "time=${it / 1000000}")
+				log.debug(logTag, "time=${it / 1000000}")
 				time += it / 1000000
 				cnt += 1
 			}) // this sometimes really sucks in performance but we do not yet have any reliable alternative
@@ -176,7 +178,7 @@ private suspend fun waitForSync(env: AutomationEnvironment, afterAction: Boolean
 			UiHierarchy.waitFor(env, interactiveTimeout, actableAppElem)
 		}
 	} catch(e: java.util.concurrent.TimeoutException) {
-		Log.e(logTag, "No idle state with idle timeout: 100ms within global timeout: ${env.idleTimeout}ms", e)
+		log.error(logTag, "No idle state with idle timeout: 100ms within global timeout: ${env.idleTimeout}ms", e)
 	}
 }
 */
@@ -199,7 +201,7 @@ private fun AccessibilityService.twoPointAction(start: Pair<Int,Int>, end: Pair<
 /*
 private fun AccessibilityService.rotate(rotation: Int,automation: UiAutomation):Boolean {
 	val currRotation = (displayRotation * 90)
-	android.util.Log.d(logTag, "Current rotation $currRotation")
+	log.debug(logTag, "Current rotation $currRotation")
 	// Android supports the following rotations:
 	// ROTATION_0 = 0;
 	// ROTATION_90 = 1;
@@ -209,7 +211,7 @@ private fun AccessibilityService.rotate(rotation: Int,automation: UiAutomation):
 	// The rotation calculations is: [(current rotation in degrees + rotation) / 90] % 4
 	// Ex: curr = 90, rotation = 180 => [(90 + 360) / 90] % 4 => 1
 	val newRotation = ((currRotation + rotation) / 90) % 4
-	Log.d(logTag, "New rotation $newRotation")
+	log.debug(logTag, "New rotation $newRotation")
 	unfreezeRotation()
 	return automation.setRotation(newRotation)
 }

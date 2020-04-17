@@ -1,7 +1,6 @@
 package org.droidmate.accessibility.automation
 
 import android.os.SystemClock
-import android.util.Log
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
@@ -13,6 +12,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 open class CoroutineScheduler(
     private val accessibilityEventChannel: Channel<Long>,
@@ -21,7 +22,7 @@ open class CoroutineScheduler(
     private val timeout: Long = 500L
 ) : CoroutineScope {
     companion object {
-        private val TAG = CoroutineScheduler::class.java.simpleName
+        private val log: Logger by lazy { LoggerFactory.getLogger(CoroutineScheduler::class.java) }
     }
 
     private var job: Job = Job()
@@ -60,31 +61,32 @@ open class CoroutineScheduler(
     private suspend fun runListener() {
         while (!isCanceled) {
             val timeStamp = accessibilityEventChannel.receive()
-            Log.v(
-                TAG, "Accessibility event with time $timeStamp received. " +
-                    "Current timestamp = ${SystemClock.uptimeMillis()}")
+            log.trace(
+                "Accessibility event with time $timeStamp received. " +
+                        "Current timestamp = ${SystemClock.uptimeMillis()}"
+            )
             lastTimestamp.set(SystemClock.uptimeMillis())
         }
     }
 
     private suspend fun runScheduledTask(delayInterval: Long) {
-        Log.v(TAG, "Scheduling task with interval of $delayInterval ms")
+        log.trace("Scheduling task with interval of $delayInterval ms")
         while (!isCanceled) {
             // Determine how long we should wait
             val delayTime = delayInterval - (SystemClock.uptimeMillis() - lastTimestamp.get())
-            Log.v(TAG, "Delaying scheduled task for $delayTime ms")
+            log.trace("Delaying scheduled task for $delayTime ms")
             // Wait
             delay(delayTime)
 
             mutex.withLock {
-                Log.v(TAG, "(Locked) Checking if scheduled task must run")
+                log.trace("(Locked) Checking if scheduled task must run")
                 // Check the expected timestamp
                 val expectedTimestamp = lastTimestamp.get() + delayTime
 
                 // If we are after the expected timestamp, notify idle
                 val currentTime = SystemClock.uptimeMillis()
                 if (currentTime > expectedTimestamp) {
-                    Log.v(TAG, "(Locked) Scheduled task must run, notifying channel")
+                    log.trace("(Locked) Scheduled task must run, notifying channel")
                     // lastTimestamp.set(currentTime)
                     idleNotificationChannel.send(currentTime)
                 }
@@ -93,23 +95,23 @@ open class CoroutineScheduler(
     }
 
     private suspend fun runScheduledTimeout(delayInterval: Long) {
-        Log.v(TAG, "Scheduling timeout task with interval of $delayInterval ms")
+        log.trace("Scheduling timeout task with interval of $delayInterval ms")
         while (!isCanceled) {
             // Determine how long we should wait
             val delayTime = delayInterval - (SystemClock.uptimeMillis() - lastTimeout.get())
-            Log.v(TAG, "Delaying timeout for for $delayTime ms")
+            log.trace("Delaying timeout for for $delayTime ms")
             // Wait
             delay(delayTime)
 
             mutex.withLock {
-                Log.v(TAG, "(Locked) Checking if timeout task must run")
+                log.trace("(Locked) Checking if timeout task must run")
                 // Check the expected timestamp
                 val expectedTimestamp = lastTimeout.get() + delayTime
 
                 // If We are after the expected timestamp, update the timestamp and notify idle
                 val currentTime = SystemClock.uptimeMillis()
                 if (currentTime > expectedTimestamp) {
-                    Log.v(TAG, "(Locked) Timeout task must run, notifying channel")
+                    log.trace("(Locked) Timeout task must run, notifying channel")
                     lastTimestamp.set(currentTime)
                     lastTimeout.set(currentTime)
                     idleNotificationChannel.send(currentTime)

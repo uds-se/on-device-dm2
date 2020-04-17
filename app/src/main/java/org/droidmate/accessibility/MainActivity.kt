@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.widget.AdapterView.OnItemClickListener
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
@@ -16,10 +15,12 @@ import androidx.core.app.ActivityCompat
 import com.facebook.drawee.backends.pipeline.Fresco
 import org.droidmate.accessibility.automation.AutomationEngine
 import org.droidmate.accessibility.automation.screenshot.ScreenRecorder
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class MainActivity : AppCompatActivity() {
     companion object {
-        internal val TAG = MainActivity::class.java.simpleName
+        private val log: Logger by lazy { LoggerFactory.getLogger(MainActivity::class.java) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,17 +46,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkStoragePermission(): Boolean {
         return if (checkSelfPermission(WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            Log.v(TAG, "Permission is granted")
+            log.trace("Permission is granted")
             true
         } else {
-            Log.v(TAG, "Permission is revoked")
+            log.trace("Permission is revoked")
             ActivityCompat.requestPermissions(this, arrayOf(WRITE_EXTERNAL_STORAGE), 1)
             false
         }
     }
 
     private fun requestScreenRecordingPermission() {
-        Log.v(TAG, "Requesting screen recording permission")
+        log.trace("Requesting screen recording permission")
         val mediaProjectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
@@ -69,7 +70,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED) {
-            Log.v(TAG, "Permission: ${permissions.first()} was ${grantResults.first()}")
+            log.trace("Permission: ${permissions.first()} was ${grantResults.first()}")
             requestScreenRecordingPermission()
         }
     }
@@ -77,14 +78,14 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        Log.v(TAG, "Screen recording permission returned. Result is $resultCode")
+        log.trace("Screen recording permission returned. Result is $resultCode")
         val mediaProjectionIntent = if (resultCode == Activity.RESULT_OK && data != null) {
             data
         } else {
             throw RuntimeException("Unable to obtain screen recording permission")
         }
 
-        Log.v(TAG, "Starting screen recording")
+        log.trace("Starting screen recording")
         val screenRecorder = ScreenRecorder.new(this, mediaProjectionIntent)
         screenRecorder.start()
 
@@ -96,15 +97,15 @@ class MainActivity : AppCompatActivity() {
     /*private fun debug() {
         var bmp: Bitmap? = null
         measureTimeMillis { bmp = screenRecorder.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
+            .let { log.d("waited $it millis for screenshot") }
         saveScreenshot(bmp, "a")
 
 
         measureTimeMillis { bmp = screenRecorder.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
+            .let { log.d("waited $it millis for screenshot") }
         saveScreenshot(bmp, "b")
         measureTimeMillis { bmp = screenRecorder.takeScreenshot() }
-            .let { Log.d(TAG, "waited $it millis for screenshot") }
+            .let { log.d("waited $it millis for screenshot") }
         saveScreenshot(bmp, "c")
         screenRecorder.quit()
     }
@@ -118,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         d.deleteRecursively()
         if (!d.exists()) {
             d.mkdirs()
-            Log.d(IEngine.TAG, "Image directory: $d exists: ${d.exists()}")
+            log.d(IEngine.TAG, "Image directory: $d exists: ${d.exists()}")
         }
 
         d

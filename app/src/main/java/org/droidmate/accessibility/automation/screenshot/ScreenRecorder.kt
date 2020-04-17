@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Environment
 import android.os.HandlerThread
-import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -19,7 +18,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.droidmate.accessibility.automation.IEngine
 import org.droidmate.accessibility.automation.extensions.compress
 import org.droidmate.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_START
 import org.droidmate.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TEARDOWN
@@ -27,6 +25,8 @@ import org.droidmate.accessibility.automation.utils.debugOut
 import org.droidmate.accessibility.automation.utils.debugT
 import org.droidmate.accessibility.automation.utils.ioScope
 import org.droidmate.accessibility.automation.utils.nullableDebugT
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class ScreenRecorder private constructor(
     private val context: Context,
@@ -36,7 +36,8 @@ class ScreenRecorder private constructor(
 ) : HandlerThread("screenRecorderThread"), IScreenshotEngine, CoroutineScope {
 
     companion object {
-        private val TAG = ScreenRecorder::class.java.simpleName
+        private val log: Logger by lazy { LoggerFactory.getLogger(ScreenRecorder::class.java) }
+
         var instance: ScreenRecorder? = null
             private set
 
@@ -85,8 +86,7 @@ class ScreenRecorder private constructor(
         if (delayedImgTransfer &&
             context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
         ) {
-            Log.w(
-                IEngine.TAG,
+            log.warn(
                 "warn we have no storage permission, we may not be able to store & fetch screenshots"
             )
         }
@@ -130,7 +130,7 @@ class ScreenRecorder private constructor(
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                 }
             } catch (e: IOException) {
-                Log.e(TAG, "Failed to save screenshot ${e.message}", e)
+                log.error("Failed to save screenshot ${e.message}", e)
             }
         }
     }
@@ -152,7 +152,7 @@ class ScreenRecorder private constructor(
         return debugT("wait for screen avg = ${wt / max(1, wc)}", {
             when { // if we couldn't capture screenshots
                 bm == null -> {
-                    Log.w(IEngine.TAG, "create empty image")
+                    log.warn("create empty image")
                     ByteArray(0)
                 }
                 delayedImgTransfer -> {

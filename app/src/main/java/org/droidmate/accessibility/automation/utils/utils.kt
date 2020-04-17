@@ -2,7 +2,6 @@ package org.droidmate.accessibility.automation.utils
 
 import android.graphics.Rect
 import android.os.Build
-import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -10,9 +9,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import org.droidmate.accessibility.automation.parsing.SiblingNodeComparator
 import org.droidmate.deviceInterface.exploration.Rectangle
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.xmlpull.v1.XmlSerializer
 
-const val TAG = "droidmate/Accessibility"
+private val log: Logger by lazy { LoggerFactory.getLogger("droidmate/Accessibility") }
 // same dispatcher as GlobalScope.launch
 val backgroundScope =
     CoroutineScope(Dispatchers.Default + CoroutineName("background") + Job())
@@ -121,7 +122,7 @@ suspend fun <T> processTopDown(
                 }
     } catch (e: Exception) {
         // the accessibilityNode service may throw this if the node is no longer up-to-date
-        Log.w(
+        log.warn(
             "droidmate/UiDevice",
             "error child of $parentXpath node no longer available ${e.localizedMessage}"
         )

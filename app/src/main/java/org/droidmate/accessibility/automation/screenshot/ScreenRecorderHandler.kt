@@ -14,7 +14,6 @@ import android.media.projection.MediaProjectionManager
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
-import android.util.Log
 import android.view.WindowManager
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class ScreenRecorderHandler(
     looper: Looper,
@@ -30,7 +31,8 @@ class ScreenRecorderHandler(
     private val mediaProjectionIntent: Intent
 ) : Handler(looper), CoroutineScope {
     companion object {
-        internal val TAG = ScreenRecorderHandler::class.java.simpleName
+        private val log: Logger by lazy { LoggerFactory.getLogger(ScreenRecorderHandler::class.java) }
+
         private const val RECORDING_NAME = "screencap"
         private const val VIRTUAL_DISPLAY_FLAGS =
             DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC
@@ -108,7 +110,7 @@ class ScreenRecorderHandler(
         imageReader.setOnImageAvailableListener(object : ImageReader.OnImageAvailableListener {
             @Synchronized
             override fun onImageAvailable(reader: ImageReader) {
-                Log.d(TAG, "onImageAvailable")
+                log.debug("onImageAvailable")
 
                 // currBitmap?.recycle()
                 // currBitmap = null
@@ -135,7 +137,7 @@ class ScreenRecorderHandler(
                     }
                 } catch (e: Exception) {
                     // currBitmap?.recycle()
-                    Log.e(TAG, "Unable to acquire screenshot: ${e.message}", e)
+                    log.error("Unable to acquire screenshot: ${e.message}", e)
                     null
                 }
                 image?.close()

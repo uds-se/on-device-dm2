@@ -150,7 +150,7 @@ open class OnDeviceExploration<M, S, W>(
             assertLogsAreSortedByTime()
             warnIfTimestampsAreIncorrectWithGivenTolerance()
         } catch (e: AssertionError) {
-            throw RuntimeException(e)
+            log.error(e.message, e)
         }
     }
 

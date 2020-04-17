@@ -3,18 +3,20 @@ package org.droidmate.accessibility.automation.extensions
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
-import android.util.Log
 import com.facebook.imagepipeline.request.BasePostprocessor
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max
 import org.droidmate.accessibility.automation.parsing.DisplayedWindow
-import org.droidmate.accessibility.automation.utils.TAG
 import org.droidmate.accessibility.automation.utils.debugT
 import org.droidmate.deviceInterface.exploration.Rectangle
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 private var t = 0.0
 private var c = 0
+
+private val log: Logger by lazy { LoggerFactory.getLogger("BitmapExtensions") }
 
 fun Bitmap.toByteArray(): ByteArray {
     val h = this.height
@@ -48,7 +50,7 @@ fun Bitmap.compress(): ByteArray {
             bytes = stream.toByteArray()
             stream.close()
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to compress screenshot: ${e.message}. Stacktrace: ${e.stackTrace}")
+            log.warn("Failed to compress screenshot: ${e.message}. Stacktrace: ${e.stackTrace}")
         }
 
         bytes
@@ -93,7 +95,7 @@ fun Bitmap?.isValid(appWindows: List<DisplayedWindow>): Boolean {
 
             (maxWidth == 0 && maxHeight == 0) || ((maxWidth <= this.width) && (maxHeight <= this.height))
         } catch (e: Exception) {
-            Log.e(TAG, "Error on screen validation ${e.message}. Stacktrace: ${e.stackTrace}")
+            log.error("Error on screen validation ${e.message}. Stacktrace: ${e.stackTrace}")
             false
         }
     } else

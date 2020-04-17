@@ -1,16 +1,19 @@
 package org.droidmate.accessibility.automation.utils
 
-import android.util.Log
 import kotlin.system.measureNanoTime
 import org.droidmate.deviceInterface.DeviceConstants
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 var measurePerformance = true
 var debugEnabled = true
 
+val debugTLog: Logger by lazy { LoggerFactory.getLogger("debugT") }
+
 fun debugOut(msg: String, enabled: Boolean = true) {
     @Suppress("ConstantConditionIf")
     if (debugEnabled && enabled) {
-        Log.d("droidmate/uiad/DEBUG", msg)
+        debugTLog.debug("droidmate/uiad/DEBUG", msg)
     }
 }
 
@@ -27,7 +30,7 @@ inline fun <T> nullableDebugT(
             res = block.invoke()
         }.let {
             timer(it)
-            Log.d(
+            debugTLog.debug(
                 DeviceConstants.deviceLogcatTagPrefix + "performance",
                 "TIME: ${if (inMillis) "${(it / 1000000.0).toInt()} ms" else "${it / 1000.0} ns/1000"} \t $msg"
             )
