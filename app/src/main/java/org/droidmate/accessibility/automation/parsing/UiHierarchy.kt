@@ -1,7 +1,6 @@
 package org.droidmate.accessibility.automation.parsing
 
 import android.graphics.Bitmap
-import android.util.Log
 import android.util.Xml
 import android.view.accessibility.AccessibilityNodeInfo
 import java.io.StringWriter
@@ -20,9 +19,15 @@ import org.droidmate.accessibility.automation.utils.processTopDown
 import org.droidmate.accessibility.automation.utils.visibleOuterBounds
 import org.droidmate.deviceInterface.communication.UiElementProperties
 import org.droidmate.deviceInterface.exploration.UiElementPropertiesI
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 @Suppress("unused")
 class UiHierarchy : UiParser() {
+    companion object {
+        private val log: Logger by lazy { LoggerFactory.getLogger(UiHierarchy::class.java) }
+    }
+
     private var nActions = 0
     private var ut = 0L
     suspend fun fetch(windows: List<DisplayedWindow>, img: Bitmap?): List<UiElementPropertiesI>? {
@@ -33,14 +38,14 @@ class UiHierarchy : UiParser() {
             val validImg = img.isValid(windows)
             // TODO check if this filters out all os windows but keeps permission request dialogues
 // 			debugOut("windows to extract: ${windows.map { "${it.isExtracted()}-${it.w.pkgName}:${it.w.windowId}[${visibleOuterBounds(it.area)}]" }}")
-            Log.d(TAG, "current screen contains ${windows.size} app windows $windows")
+            log.debug("current screen contains ${windows.size} app windows $windows")
             windows.forEach { w: DisplayedWindow ->
                 // for now we are not interested in the Launcher elements
                 if (w.isExtracted() && !w.isLauncher) {
                     w.area = w.initialArea.toMutableList()
 
                     if (w.rootNode == null) {
-                        Log.w(TAG, "ERROR root should not be null (window=$w)")
+                        log.warn("ERROR root should not be null (window=$w)")
                     }
                     check(w.rootNode != null) { "if extraction is enabled we have to have a rootNode" }
                     debugT("create bottom up", {
@@ -51,8 +56,7 @@ class UiHierarchy : UiParser() {
                             nodes = nodes,
                             img = if (validImg) img else null
                         )
-                        Log.d(
-                            TAG,
+                        log.debug(
                             "${w.w.pkgName}:${w.w.windowId} ${visibleOuterBounds(w.initialArea)} " +
                                     "#elems = ${nodes.size} ${w.initialArea} empty=${w.initialArea.isEmpty()}"
                         )
@@ -61,7 +65,7 @@ class UiHierarchy : UiParser() {
             }
         } catch (e: Exception) {
             // the accessibilityNode service may throw this if the node is no longer up-to-date
-            Log.e(
+            log.error(
                 "droidmate/UiDevice",
                 "error while fetching widgets ${e.localizedMessage}\n last widget was ${nodes.lastOrNull()}",
                 e
@@ -162,13 +166,13 @@ class UiHierarchy : UiParser() {
         val processor: NodeProcessor = { node, _, xPath ->
             when {
                 found -> false // we already found our target and performed our action -> stop searching
-// 				!isActive -> {Log.w(TAG,"process became inactive"); false} //TODO this is still experimental
+// 				!isActive -> {log.warn(TAG,"process became inactive"); false} //TODO this is still experimental
                 !node.isVisibleToUser -> {
-// 					Log.d(TAG,"node $xPath is invisible")
+// 					log.debug(TAG,"node $xPath is invisible")
                     false
                 }
                 /*!node.refresh() -> {
-                    Log.w(TAG, "refresh on node $xPath failed"); false
+                    log.warn("refresh on node $xPath failed"); false
                 }*/
                 // do not traverse deeper
                 else -> {
@@ -177,8 +181,7 @@ class UiHierarchy : UiParser() {
                             if (isFound) {
                                 successful = action(node).run {
                                     if (retry && !this) {
-                                        Log.d(
-                                            TAG,
+                                        log.debug(
                                             "action failed on $node\n with id ${computeIdHash(
                                                 xPath,
                                                 node.window.layer
@@ -190,7 +193,7 @@ class UiHierarchy : UiParser() {
                                         this
                                     }
                                 }.also {
-                                    Log.d(TAG, "action returned $it")
+                                    log.debug("action returned $it")
                                 }
                             }
                         }
@@ -198,16 +201,16 @@ class UiHierarchy : UiParser() {
                 }
             }
         }
-// 			Log.d(TAG, "roots are ${roots.map { it.packageName }}")
+// 			log.debug("roots are ${roots.map { it.packageName }}")
         roots.forEach { root ->
-            // 		Log.d(TAG, "search in root $root with ${root.childCount} children")
+            // 		log.debug("search in root $root with ${root.childCount} children")
             // only continue search if element is not yet found in any previous root (otherwise we would overwrite the result accidentally)
             if (!found) {
                 processTopDown(root, processor = processor, postProcessor = { Unit })
             }
         }
         if (retry && !found) {
-            Log.d(TAG, "didn't find target, try a second time")
+            log.debug("didn't find target, try a second time")
             delay(20)
             roots.forEach { root ->
                 if (!found) {
@@ -215,7 +218,7 @@ class UiHierarchy : UiParser() {
                 }
             }
         }
-        Log.d(TAG, "found = $found")
+        log.debug("found = $found")
         return found && successful
     }
 
@@ -274,11 +277,11 @@ class UiHierarchy : UiParser() {
                     if (!found && this < pollTime) {
                         delay(pollTime - this)
                     }
-                    Log.d(TAG, "$found single wait iteration $this")
+                    log.debug("$found single wait iteration $this")
                 }
             }
             found.also {
-                Log.d(TAG, "wait was successful: $found")
+                log.debug("wait was successful: $found")
             }
         }
 }

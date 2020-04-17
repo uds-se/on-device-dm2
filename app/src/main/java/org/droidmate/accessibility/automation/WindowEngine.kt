@@ -4,13 +4,11 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.graphics.Point
 import android.graphics.Rect
-import android.util.Log
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import org.droidmate.accessibility.automation.IEngine.Companion.TAG
 import org.droidmate.accessibility.automation.IEngine.Companion.debug
 import org.droidmate.accessibility.automation.IEngine.Companion.debugFetch
 import org.droidmate.accessibility.automation.extensions.getBounds
@@ -30,6 +28,8 @@ import org.droidmate.accessibility.automation.utils.nullableDebugT
 import org.droidmate.accessibility.automation.utils.processTopDown
 import org.droidmate.deviceInterface.exploration.DeviceResponse
 import org.droidmate.deviceInterface.exploration.UiElementPropertiesI
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class WindowEngine(
     private val uiHierarchy: UiHierarchy,
@@ -39,6 +39,7 @@ class WindowEngine(
 ) : IWindowEngine {
     companion object {
         const val osPkg = "com.android.systemui"
+        private val log: Logger by lazy { LoggerFactory.getLogger(WindowEngine::class.java) }
     }
 
     private val wmService: WindowManager =
@@ -72,7 +73,7 @@ class WindowEngine(
         val rotation = wmService.defaultDisplay.rotation
 
         if (debugEnabled) {
-            Log.d(TAG, "rotation is $rotation")
+            log.debug("rotation is $rotation")
         }
 
         return rotation
@@ -92,7 +93,7 @@ class WindowEngine(
         }, inMillis = true)
 
         if (windows.invalid()) {
-            throw IllegalStateException("Error: Displayed Windows could not be extracted $windows")
+            log.error("Error: Displayed Windows could not be extracted $windows")
         }
 
         return windows
@@ -120,7 +121,7 @@ class WindowEngine(
         wmService.defaultDisplay.getRealSize(p)
 
         if (debugEnabled) {
-            Log.d(TAG, "dimensions are $p")
+            log.debug("dimensions are $p")
         }
 
         return DisplayDimension(p.x, p.y)
@@ -175,11 +176,11 @@ class WindowEngine(
                     val cnd = canReuseFor(newW)
 
                     if (w.windowId == newW.id && !cnd) {
-                        Log.d(TAG, "cannot reuse $this for ${newW.id}: ${newW.root?.packageName}")
+                        log.debug("cannot reuse $this for ${newW.id}: ${newW.root?.packageName}")
                     }
 
                     if (cnd) {
-                        Log.d(TAG, "can reuse window ${w.windowId} ${w.pkgName} ${w.boundaries}")
+                        log.debug("can reuse window ${w.windowId} ${w.pkgName} ${w.boundaries}")
                         processedWindows[w.windowId] =
                             this.apply { if (isExtracted()) rootNode = newW.root }
                     } else {
@@ -191,9 +192,12 @@ class WindowEngine(
             // we could only partially reuse windows or none
             if (!canReuse) {
                 if (processedWindows.isNotEmpty()) {
-                    Log.d(
-                        TAG,
-                        "partial reuse of windows ${processedWindows.entries.joinToString(separator = "  ") { (id, w) -> "$id: ${w.w.pkgName}" }}"
+                    log.debug(
+                        "partial reuse of windows ${processedWindows.entries
+                            .joinToString(separator = "  ") {
+                                    (id, w) -> "$id: ${w.w.pkgName}"
+                            }
+                        }"
                     )
                 }
                 // then we need to mark the (reused) displayed window area as occupied
@@ -220,7 +224,7 @@ class WindowEngine(
             }
             if (!canContinue) { // something went wrong in the window extraction => throw cached results away and try once again
                 delay(100)
-                Log.d(TAG, "window processing failed try once again")
+                log.debug("window processing failed try once again")
                 processedWindows.clear()
                 windows = service.windows
                 windows.forEach { window ->
@@ -228,8 +232,7 @@ class WindowEngine(
                         processedWindows[it.w.windowId] = it
                     }
                         ?: let {
-                            Log.e(
-                                TAG,
+                            log.error(
                                 "window ${window.id}: ${window.root?.packageName} ${window.title}"
                             )
                         }
@@ -238,8 +241,7 @@ class WindowEngine(
         }
 
         if (processedWindows.size < windows.size) {
-            Log.e(
-                TAG,
+            log.error(
                 "ERROR could not get rootNode for all windows[" +
                         "#dw=${processedWindows.size}, " +
                         "#w=${windows.size}] " +
@@ -283,7 +285,7 @@ class WindowEngine(
                     // wrong keyboard boundaries reported
                     // keyboard should never cover more then 2/3 of the screen height
                     if (outRect.top <= dim.height / 3) {
-                        Log.d(TAG, "try to handle soft keyboard in front with $outRect")
+                        log.debug("try to handle soft keyboard in front with $outRect")
                         uiHierarchy.findAndPerform(listOf(root),
                             keyboardEngine.selectKeyboardRoot(
                                 dim.height / 3,
@@ -297,8 +299,7 @@ class WindowEngine(
                             })
                     }
                 }
-                Log.d(
-                    TAG,
+                log.debug(
                     "use device root for ${window.id} ${root.packageName}[$outRect] uncovered = $uncoveredC ${window.type}"
                 )
                 return DisplayedWindow(
@@ -309,15 +310,14 @@ class WindowEngine(
                     root
                 )
             }
-            Log.w(
-                TAG,
+            log.warn(
                 "warn no root for ${window.id} ${deviceRoots.map { "${it.packageName}" + " wId=${it.window?.id}" }}"
             )
             return null
         }
         window.getBoundsInScreen(outRect)
         if (outRect.isEmpty && window.type == AccessibilityWindowInfo.TYPE_APPLICATION) {
-            Log.w(TAG, "warn empty application window")
+            log.warn("warn empty application window")
             return null
         }
         debugOut(
@@ -351,15 +351,14 @@ class WindowEngine(
                 .let {
                     if (it == null || (!windows.isHomeScreen() && it.none(isInteractive))) {
                         // retry once for the case that AccessibilityNode tree was not yet stable
-                        Log.w(
-                            TAG,
+                        log.warn(
                             "first ui extraction failed or no interactive elements were found " +
                                     "\n $it, \n ---> start a second try"
                         )
                         windows = getDisplayedAppWindows()
                         img = screenshotEngine.takeScreenshot(actionNr)
                         val secondRes = uiHierarchy.fetch(windows, img)
-                        Log.d(TAG, "second try resulted in ${secondRes?.size} elements")
+                        log.debug("second try resulted in ${secondRes?.size} elements")
                         secondRes
                     } else {
                         it
@@ -367,11 +366,11 @@ class WindowEngine(
                 } ?: emptyList<UiElementPropertiesI>()
                 .also {
                     isSuccessful = false
-                    Log.e(TAG, "could not parse current UI screen ( $windows )")
+                    log.error("could not parse current UI screen ( $windows )")
                     throw RuntimeException("UI extraction failed for windows: $windows")
                 }
 
-// 	Log.d(logTag, "uiHierarchy = $uiHierarchy")
+// 	log.debug(logTag, "uiHierarchy = $uiHierarchy")
             debugOut("Elements in UI = ${uiElements.size}")
             debugOut("INTERACTIVE Element in UI = ${uiElements.any(isInteractive)}")
 
@@ -438,7 +437,7 @@ class WindowEngine(
         for (window in service.windows) {
             val root = window.root
             if (root == null) {
-                Log.w(TAG, "Skipping null root node for window: $window")
+                log.warn("Skipping null root node for window: $window")
                 continue
             }
             roots.add(root)
@@ -460,7 +459,7 @@ class WindowEngine(
                 processTopDown(root, processor = processor, postProcessor = { Unit })
             }
         } catch (e: Exception) {
-            Log.w(
+            log.warn(
                 "droidmate/UiDevice",
                 "error while processing AccessibilityNode tree ${e.localizedMessage}"
             )

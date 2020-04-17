@@ -1,15 +1,16 @@
 package org.droidmate.accessibility.automation
 
 import android.accessibilityservice.AccessibilityService
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import org.droidmate.accessibility.automation.utils.backgroundScope
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 open class TestService : AccessibilityService() {
     companion object {
-        private val TAG = TestService::class.java.simpleName
+        private val log: Logger by lazy { LoggerFactory.getLogger(TestService::class.java) }
     }
 
     private val accessibilityChannel = Channel<Long>()
@@ -24,7 +25,7 @@ open class TestService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
-        Log.i(TAG, "Service connected")
+        log.info("Service connected")
 
         if (!scheduler.isRunning) {
             automationEngine.run()
@@ -33,15 +34,15 @@ open class TestService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        Log.i(TAG, "Interrupting service")
+        log.info("Interrupting service")
         scheduler.isCanceled = true
         automationEngine.canceled = true
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        Log.d(TAG, "Accessibility event received ${AccessibilityEvent.eventTypeToString(event.eventType)}")
+        log.debug("Accessibility event received ${AccessibilityEvent.eventTypeToString(event.eventType)}")
         if (event.windowChanges + event.contentChangeTypes > 0) {
-            Log.d(TAG, "Relevant accessibility event received")
+            log.debug("Relevant accessibility event received")
         }
         backgroundScope.launch {
             accessibilityChannel.send(event.eventTime)

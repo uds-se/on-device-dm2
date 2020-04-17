@@ -2,7 +2,6 @@ package org.droidmate.accessibility.automation.parsing
 
 import android.graphics.Bitmap
 import android.graphics.Rect
-import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.isActive
@@ -21,12 +20,14 @@ import org.droidmate.deviceInterface.communication.UiElementProperties
 import org.droidmate.deviceInterface.exploration.Rectangle
 import org.droidmate.deviceInterface.exploration.isEnabled
 import org.droidmate.deviceInterface.exploration.visibleOuterBounds
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.xmlpull.v1.XmlSerializer
 
 abstract class UiParser {
 
     companion object {
-        internal val TAG = UiParser::class.java.simpleName
+        private val log: Logger by lazy { LoggerFactory.getLogger(UiParser::class.java) }
 
         fun computeIdHash(xPath: String, windowLayer: Int) = xPath.hashCode() + windowLayer
         /** used for parentHash and idHash computation of [UiElementProperties] */
@@ -44,7 +45,7 @@ abstract class UiParser {
         parentH: Int = 0
     ): UiElementProperties? {
         if (!coroutineContext.isActive) {
-            Log.w(TAG, "coroutine is no longer active UI parsing is aborted")
+            log.warn("coroutine is no longer active UI parsing is aborted")
             return null
         }
         /*val refresh = node.refresh()
