@@ -111,11 +111,7 @@ private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any 
             env.sendKeyEvent(KeyEvent.KEYCODE_WAKEUP)
             env.launchApp(packageName, launchActivityDelay)
         }
-        /*
-        is Swipe -> env.device.twoPointAction(start, end) { x0, y0, x1, y1 ->
-            env.device.swipe(x0, y0, x1, y1, stepSize)
-        }
-        */
+        is Swipe -> env.swipe(this)
         // is TwoPointerGesture -> TODO("this requires a call on UiObject, which we currently do not match to our ui-extraction")
         // is PinchIn -> TODO("this requires a call on UiObject, which we currently do not match to our ui-extraction")
         // is PinchOut -> TODO("this requires a call on UiObject, which we currently do not match to our ui-extraction")

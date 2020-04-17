@@ -12,7 +12,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.RemoteException
 import android.provider.Settings
-import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.io.IOException
@@ -27,7 +26,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
-import org.droidmate.accessibility.automation.IEngine.Companion.TAG
 import org.droidmate.accessibility.automation.IEngine.Companion.debug
 import org.droidmate.accessibility.automation.IEngine.Companion.debugFetch
 import org.droidmate.accessibility.automation.parsing.SelectorCondition
@@ -51,10 +49,13 @@ import org.droidmate.deviceInterface.exploration.Direction
 import org.droidmate.deviceInterface.exploration.LongClick
 import org.droidmate.deviceInterface.exploration.LongClickEvent
 import org.droidmate.deviceInterface.exploration.Scroll
+import org.droidmate.deviceInterface.exploration.Swipe
 import org.droidmate.deviceInterface.exploration.TextInsert
 import org.droidmate.deviceInterface.exploration.Tick
 import org.droidmate.exploration.strategy.ExplorationStrategyPool
 import org.droidmate.explorationModel.factory.DefaultModelProvider
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 open class AutomationEngine(
     private val notificationChannel: Channel<Long>,
@@ -81,6 +82,7 @@ open class AutomationEngine(
     CoroutineScope {
     companion object {
         var targetPackage = ""
+        private val log: Logger by lazy { LoggerFactory.getLogger(AutomationEngine::class.java) }
         private val explorationDoneFile = Environment.getExternalStorageDirectory().toPath()
             .resolve("DM-2")
             .resolve("exploration.done")
@@ -127,11 +129,11 @@ open class AutomationEngine(
         supervisorScope {
             try {
                 while (!canceled) {
-                    Log.v(TAG, "Continuing loop, waiting for idle")
+                    log.trace("Continuing loop, waiting for idle")
                     waitForIdle()
-                    Log.v(TAG, "Idle, acting")
+                    log.trace("Idle, acting")
                     canceled = canceled or exploration.explorationLoop(apk)
-                    Log.v(TAG, "Acted, repeating loop")
+                    log.trace("Acted, repeating loop")
                 }
             } finally {
                 terminate()
@@ -210,7 +212,7 @@ open class AutomationEngine(
     }
 
     suspend fun launchApp(appPackageName: String, launchActivityDelay: Long): Boolean {
-        Log.i(TAG, "Launching app $appPackageName and waiting $launchActivityDelay ms for it to start")
+        log.info("Launching app $appPackageName and waiting $launchActivityDelay ms for it to start")
         var success = false
         // Go back to home
         pressHome()
@@ -242,7 +244,7 @@ open class AutomationEngine(
                     }
                 uiHierarchy.waitFor(this, launchActivityDelay, appEntry)
                 uiHierarchy.findAndPerform(this, appEntry) { nodeInfo ->
-                    Log.d(TAG, "Clicking on menu entry")
+                    log.debug("Clicking on menu entry")
                     nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 }
 
@@ -263,7 +265,7 @@ open class AutomationEngine(
             }
         }
 
-        Log.d(TAG, "TIME: load-time $loadTime millis")
+        log.debug("TIME: load-time $loadTime millis")
         return success
     }
 
@@ -274,7 +276,7 @@ open class AutomationEngine(
 
     suspend fun minimizeMaximize(packageName: String? = null): Boolean {
         val currentPackage = packageName ?: activeAppPackage
-        Log.d(TAG, "Minimizing and maximizing current package $currentPackage")
+        log.debug("Minimizing and maximizing current package $currentPackage")
 
         pressRecentApps()
         // Cannot use wait for changes because it crashes UIAutomator
@@ -288,7 +290,7 @@ open class AutomationEngine(
             // delay(100) // avoid idle 0 which get the wait stuck for multiple seconds
             debugT("waitForIdle", { waitForIdle() }, inMillis = true)
 
-            Log.d(TAG, "Current package name $activeAppPackage")
+            log.debug("Current package name $activeAppPackage")
             if (activeAppPackage == currentPackage || activeAppPackage.isRuntimePermission())
                 break
         }
@@ -305,6 +307,18 @@ open class AutomationEngine(
         }
     }
 
+    fun swipe(action: Swipe): Boolean {
+        val startSwipeX = action.start.first
+        val startSwipeY = action.start.second
+        val endSwipeX = action.end.first
+        val endSwipeY = action.end.second
+
+        val swipe = Gestures.createSwipe(startSwipeX, startSwipeY, endSwipeX, endSwipeY, 200)
+        // Gesture is asynchronously dispatched
+        service.dispatchGesture(swipe, null, null)
+        return true
+    }
+
     suspend fun click(action: Click): Boolean {
         if (api < Build.VERSION_CODES.N) {
             return false
@@ -318,7 +332,7 @@ open class AutomationEngine(
     suspend fun clickEvent(action: ClickEvent): Boolean {
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
-            // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
+            // log.debug(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
             nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         }
 
@@ -326,7 +340,7 @@ open class AutomationEngine(
         if (success) {
             delay(action.delay)
         }
-        Log.d(TAG, "perform successful=$success")
+        log.debug("perform successful=$success")
         return success
     }
 
@@ -334,10 +348,10 @@ open class AutomationEngine(
         return uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
             if (nodeInfo.isFocusable) {
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                Log.d(TAG, "focus input-field")
+                log.debug("focus input-field")
             } else if (nodeInfo.isClickable) {
                 nodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                Log.d(TAG, "click non-focusable input-field")
+                log.debug("click non-focusable input-field")
             }
             // do this for API Level above 19 (exclusive)
             val args = Bundle()
@@ -347,11 +361,11 @@ open class AutomationEngine(
             )
             nodeInfo.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
                 .also {
-                    Log.d(TAG, "perform successful=$it")
+                    log.debug("perform successful=$it")
                     // when doing multiple action sending enter may trigger a continue
                     // button but not all elements are yet filled
                     if (action.sendEnter && !isWithinQueue) {
-                        Log.d(TAG, "trigger enter")
+                        log.debug("trigger enter")
                         pressEnter()
                     }
                     if (nodeInfo.isFocusable) {
@@ -365,7 +379,7 @@ open class AutomationEngine(
     suspend fun scroll(action: Scroll): Boolean {
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
-            // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
+            // log.debug(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
             when (action.direction) {
                 Direction.UP -> {
                     nodeInfo.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_UP.id)
@@ -383,7 +397,7 @@ open class AutomationEngine(
         }
 
         // wait for display update
-        Log.d(TAG, "perform successful=$success")
+        log.debug("perform successful=$success")
         return success
     }
 
@@ -414,7 +428,7 @@ open class AutomationEngine(
     suspend fun longClickEvent(action: LongClickEvent): Boolean {
         // do this for API Level above 19 (exclusive)
         val success = uiHierarchy.findAndPerform(windowEngine, idMatch(action.idHash)) { nodeInfo ->
-            // Log.d(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
+            // log.debug(logTag, "looking for click target, windows are ${env.getDisplayedWindows()}")
             nodeInfo.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)
         }
 
@@ -422,7 +436,7 @@ open class AutomationEngine(
         if (success) {
             delay(action.delay)
         }
-        Log.d(TAG, "perform successful=$success")
+        log.debug("perform successful=$success")
         return success
     }
 
@@ -453,7 +467,7 @@ open class AutomationEngine(
             val shellProcess = runtime.exec(keyCommand)
             shellProcess.waitFor()
         } catch (e: IOException) {
-            Log.e(TAG, "Unable to send key event $keyCode", e)
+            log.error("Unable to send key event $keyCode", e)
         }
     }
 
@@ -462,7 +476,7 @@ open class AutomationEngine(
         val success = wfm.setWifiEnabled(true)
 
         if (!success) {
-            Log.w(TAG, "Failed to ensure WiFi is enabled!")
+            log.warn("Failed to ensure WiFi is enabled!")
         }
     }
 
