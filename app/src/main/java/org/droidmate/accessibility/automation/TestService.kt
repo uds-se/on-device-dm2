@@ -7,7 +7,6 @@ import kotlinx.coroutines.launch
 import org.droidmate.accessibility.automation.utils.backgroundScope
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.lang.Exception
 
 open class TestService : AccessibilityService() {
     companion object {
