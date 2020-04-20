@@ -2,7 +2,9 @@ package org.droidmate.accessibility.automation.utils
 
 import android.graphics.Rect
 import android.os.Build
+import android.os.Environment
 import android.view.accessibility.AccessibilityNodeInfo
+import java.io.File
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,15 @@ val ioScope =
     CoroutineScope(Dispatchers.IO + CoroutineName("background") + Job())
 
 val api = Build.VERSION.SDK_INT
+
+val imgDir: File by lazy {
+    val dir = Environment.getExternalStorageDirectory()
+        .resolve("DM-2")
+        .resolve("images")
+
+    dir.mkdirs()
+    dir
+}
 
 fun visibleOuterBounds(r: Collection<Rect>): Rectangle = with(r.filter { !it.isEmpty }) {
     val pl = minBy { it.left }

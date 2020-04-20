@@ -34,5 +34,5 @@ interface IWindowEngine : IEngine {
 
     suspend fun exec(processor: NodeProcessor)
 
-    suspend fun fetchDeviceData(actionNr: Int, afterAction: Boolean = false): DeviceResponse
+    suspend fun fetchDeviceData(actionNr: Int, delayedImgFetch: Boolean, afterAction: Boolean = false): DeviceResponse
 }

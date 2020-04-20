@@ -1,22 +1,32 @@
 package org.droidmate.accessibility.exploration
 
 import com.natpryce.konfig.ConfigurationProperties
+import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.droidmate.accessibility.automation.AutomationEngine
+import org.droidmate.accessibility.automation.utils.imgDir
 import org.droidmate.configuration.ConfigProperties.Output.reportDir
 import org.droidmate.configuration.ConfigurationWrapper
 import org.droidmate.device.android_sdk.IApk
 import org.droidmate.device.error.DeviceExceptionMissing
 import org.droidmate.device.logcat.ApiLogcatMessage
 import org.droidmate.device.logcat.ApiLogcatMessageListExtensions
+import org.droidmate.deviceInterface.exploration.ActionQueue
+import org.droidmate.deviceInterface.exploration.Click
 import org.droidmate.deviceInterface.exploration.EmptyAction
 import org.droidmate.deviceInterface.exploration.ExplorationAction
+import org.droidmate.deviceInterface.exploration.Swipe
+import org.droidmate.deviceInterface.exploration.TextInsert
 import org.droidmate.exploration.ExplorationContext
 import org.droidmate.exploration.actions.launchApp
 import org.droidmate.exploration.modelFeatures.ModelFeature
@@ -165,6 +175,23 @@ open class OnDeviceExploration<M, S, W>(
         assert(ret)
     }
 
+    private suspend fun moveScreenShot(actionId: Int, targetDir: Path, eContext: ExplorationContext<M, S, W>) = eContext.imgTransfer.launch(Dispatchers.IO) {
+        // pull the image from device, store it in the image directory defined in ModelConfig and remove it on device
+        val fileName = "$actionId.jpg"
+        val srcFile = imgDir.resolve(fileName)
+        val dstFile = targetDir.resolve(fileName)
+        var c = 0
+        do { // try for up to 3 times to pull a screenshot image
+            delay(2000) // the device is going to need some time to compress the image, if the image is time critical you should disable delayed fetch
+        } while (isActive && c++ < 3 && ! srcFile.exists())
+
+        if (! File(srcFile.toString()).exists())
+            log.warn("unable to fetch state image for action $actionId")
+        else
+            Files.move(srcFile.toPath(), dstFile, StandardCopyOption.REPLACE_EXISTING)
+    }
+
+    var capturedPreviously = false
     suspend fun explorationLoop(app: IApk): Boolean {
         log.debug("explorationLoop(app=${app.packageName}) - time: " + explorationContext.explorationStartTime)
 
@@ -177,8 +204,31 @@ open class OnDeviceExploration<M, S, W>(
                     action = strategyScheduler.nextAction(explorationContext)
                     // execute action
                     result = action.execute(app, automationEngine)
-
-                    // capturedPreviously = result.guiSnapshot.capturedScreen
+                    if (automationEngine.delayedImgFetch) {
+                        /* if images are not critical for the exploration strategy
+                        they can be stored asynchronous (faster critical path),
+                        move the files to the correct location as soon as they are available */
+                        if (capturedPreviously && action is ActionQueue) {
+                            val aq = (action as ActionQueue)
+                            aq.actions.forEachIndexed { i, a ->
+                                log.debug("action queue element {} should have screenshot for ExploreCommand {}", i, a)
+                                if (i < aq.actions.size - 1 &&
+                                    ((a is TextInsert && aq.actions[i + 1] is Click) || a is Swipe))
+                                    moveScreenShot(
+                                        a.id,
+                                        explorationContext.model.config.imgDst,
+                                        explorationContext
+                                    )
+                            }
+                        }
+                        if (result.guiSnapshot.capturedScreen) {
+                            val id =
+                                if (action.isTerminate()) action.id + 1 else action.id // terminate is not send to the device instead we terminate the app process and issue Fetch which will have a higher id value
+                            log.debug("action {} should have screenshot for ExploreCommand {}", id, action)
+                            moveScreenShot(id, explorationContext.model.config.imgDst, explorationContext)
+                        }
+                    }
+                    capturedPreviously = result.guiSnapshot.capturedScreen
 
                     explorationContext.update(action, result)
 
@@ -196,7 +246,7 @@ open class OnDeviceExploration<M, S, W>(
                     // interact on non-actable elements
                     log.error(
                         "Exception during exploration\n" +
-                                " ${e.localizedMessage}", e
+                            " ${e.localizedMessage}", e
                     )
                     explorationContext.exceptions.add(e)
                     explorationContext.launchApp().execute(app, automationEngine)

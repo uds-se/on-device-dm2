@@ -58,7 +58,7 @@ suspend fun ExplorationAction.execute(env: AutomationEngine): DeviceResponse {
             // only fetch once even if the action was a FetchGUI action
             if (!this.isFetch())
                 debugT("FETCH avg= ${tFetch / (max(nActions, 1) * 1000000)}", {
-                    env.fetchDeviceData(nActions, afterAction = true)
+                    env.fetchDeviceData(this.id, env.delayedImgFetch, afterAction = true)
                 },
                     inMillis = true,
                     timer = {
@@ -96,7 +96,7 @@ private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any 
                 ActionType.PressHome -> env.pressHome()
                 ActionType.EnableWifi -> env.enableWifi()
                 ActionType.MinimizeMaximize -> env.minimizeMaximize()
-                ActionType.FetchGUI -> env.fetchDeviceData(this.id, afterAction = false)
+                ActionType.FetchGUI -> env.fetchDeviceData(this.id, env.delayedImgFetch, afterAction = false)
                 ActionType.Terminate -> env.terminateExploration()
                 ActionType.PressEnter -> env.pressEnter()
                 ActionType.CloseKeyboard -> if (env.isKeyboardOpen()) {
@@ -132,7 +132,7 @@ private suspend fun ExplorationAction.performAction(env: AutomationEngine): Any 
                                     kotlinx.coroutines.delay(delay)
                                 }
 
-                                env.takeScreenshot(action.id)
+                                env.getAndStoreImgPixels(env.takeScreenshot(action.id), action.id, env.delayedImgFetch)
                             }
                         }.let {
                             if (it is Boolean) {

@@ -5,11 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.os.Environment
 import android.os.HandlerThread
-import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +20,7 @@ import org.droidmate.accessibility.automation.screenshot.ScreenRecorderHandler.C
 import org.droidmate.accessibility.automation.screenshot.ScreenRecorderHandler.Companion.MESSAGE_TEARDOWN
 import org.droidmate.accessibility.automation.utils.debugOut
 import org.droidmate.accessibility.automation.utils.debugT
+import org.droidmate.accessibility.automation.utils.imgDir
 import org.droidmate.accessibility.automation.utils.ioScope
 import org.droidmate.accessibility.automation.utils.nullableDebugT
 import org.slf4j.Logger
@@ -31,8 +29,7 @@ import org.slf4j.LoggerFactory
 class ScreenRecorder private constructor(
     private val context: Context,
     private val mediaProjectionIntent: Intent,
-    private val imgQuality: Int = 10,
-    private val delayedImgTransfer: Boolean = false
+    private val imgQuality: Int = 10
 ) : HandlerThread("screenRecorderThread"), IScreenshotEngine, CoroutineScope {
 
     companion object {
@@ -44,11 +41,10 @@ class ScreenRecorder private constructor(
         fun new(
             context: Context,
             mediaProjectionIntent: Intent,
-            imgQuality: Int = 10,
-            delayedImgTransfer: Boolean = false
+            imgQuality: Int = 10
         ): ScreenRecorder {
             instance =
-                ScreenRecorder(context, mediaProjectionIntent, imgQuality, delayedImgTransfer)
+                ScreenRecorder(context, mediaProjectionIntent, imgQuality)
             return get()
         }
 
@@ -63,18 +59,8 @@ class ScreenRecorder private constructor(
 
     private val bitmapChannel = Channel<Bitmap?>()
 
-    private val imgDir: File by lazy {
-        val dir = Environment.getExternalStorageDirectory()
-            .resolve("DM-2")
-            .resolve("images")
-
-        dir.mkdirs()
-        dir
-    }
-
     private var wt = 0.0
     private var wc = 0
-    private var lastId = 0
 
     private lateinit var handler: ScreenRecorderHandler
 
@@ -83,8 +69,8 @@ class ScreenRecorder private constructor(
     override fun onLooperPrepared() {
         super.onLooperPrepared()
 
-        if (delayedImgTransfer &&
-            context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+        if (context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED
         ) {
             log.warn(
                 "warn we have no storage permission, we may not be able to store & fetch screenshots"
@@ -109,12 +95,6 @@ class ScreenRecorder private constructor(
                 ioScope.coroutineContext[Job]?.children?.forEach { it.join() }
                 bitmap = bitmapChannel.receive()
 
-                ioScope.launch {
-                    debugT("save screenshot to disk", {
-                        saveScreenshot(bitmap, actionNr.toString())
-                    }, inMillis = true)
-                }
-
                 handler.sendEmptyMessage(MESSAGE_TEARDOWN)
 
                 bitmap
@@ -122,32 +102,11 @@ class ScreenRecorder private constructor(
         }, inMillis = true)
     }
 
-    private fun saveScreenshot(bitmap: Bitmap?, name: String) {
-        if (bitmap != null) {
-            try {
-                FileOutputStream(imgDir.resolve("$name.png")).use { out ->
-                    // bmp is your Bitmap instance
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                }
-            } catch (e: IOException) {
-                log.error("Failed to save screenshot ${e.message}", e)
-            }
-        }
-    }
-
     /**
      * Compressing an image no matter the quality, takes long time therefore the option of
      * storing these asynchronous and transferring them later is available via configuration
      */
-    override fun getOrStoreImgPixels(bm: Bitmap?): ByteArray {
-        return getOrStoreImgPixels(bm, lastId)
-    }
-
-    /**
-     * Compressing an image no matter the quality, takes long time therefore the option of
-     * storing these asynchronous and transferring them later is available via configuration
-     */
-    override fun getOrStoreImgPixels(bm: Bitmap?, actionId: Int): ByteArray {
+    override fun getAndStoreImgPixels(bm: Bitmap?, actionId: Int, delayedImgTransfer: Boolean): ByteArray {
         runBlocking { ioScope.coroutineContext[Job]?.children?.forEach { it.join() } }
         return debugT("wait for screen avg = ${wt / max(1, wc)}", {
             when { // if we couldn't capture screenshots
@@ -166,9 +125,7 @@ class ScreenRecorder private constructor(
                     }
                     ByteArray(0)
                 }
-                else -> bm.compress().also {
-                    bm.recycle()
-                }
+                else -> bm.compress().also { bm.recycle() }
             }
         }, inMillis = true,
             timer = { wt += it / 1000000.0; wc += 1 })

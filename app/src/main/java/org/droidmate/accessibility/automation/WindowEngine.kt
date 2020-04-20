@@ -2,6 +2,7 @@ package org.droidmate.accessibility.automation
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Point
 import android.graphics.Rect
 import android.view.WindowManager
@@ -332,7 +333,7 @@ class WindowEngine(
         return DisplayedWindow(window, uncoveredC, outRect, keyboardEngine.isKeyboard(window.root))
     }
 
-    override suspend fun fetchDeviceData(actionNr: Int, afterAction: Boolean): DeviceResponse {
+    override suspend fun fetchDeviceData(actionNr: Int, delayedImgFetch: Boolean, afterAction: Boolean): DeviceResponse {
         return coroutineScope {
             debugOut("start fetch execution", debugFetch)
             // waitForSync(env,afterAction)
@@ -344,7 +345,7 @@ class WindowEngine(
 
             // fetch the screenshot if available
             // could maybe use Espresso View.DecorativeView to fetch screenshot instead
-            var img = screenshotEngine.takeScreenshot(actionNr)
+            var img: Bitmap? = screenshotEngine.takeScreenshot(actionNr)
 
             debugOut("start element extraction", debugFetch)
 
@@ -393,7 +394,7 @@ class WindowEngine(
 
             debugOut("compute img pixels", debugFetch)
             val imgPixels = debugT("get or store img pixels", {
-                screenshotEngine.getOrStoreImgPixels(img)
+                screenshotEngine.getAndStoreImgPixels(img, actionNr, delayedImgFetch)
             }, inMillis = true)
 
             @Suppress("CanBeVal")

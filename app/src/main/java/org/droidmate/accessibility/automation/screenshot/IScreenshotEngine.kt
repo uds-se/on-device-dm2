@@ -5,6 +5,5 @@ import org.droidmate.accessibility.automation.IEngine
 
 interface IScreenshotEngine : IEngine {
     fun takeScreenshot(actionNr: Int): Bitmap?
-    fun getOrStoreImgPixels(bm: Bitmap?): ByteArray
-    fun getOrStoreImgPixels(bm: Bitmap?, actionId: Int): ByteArray
+    fun getAndStoreImgPixels(bm: Bitmap?, actionId: Int, delayedImgTransfer: Boolean): ByteArray
 }

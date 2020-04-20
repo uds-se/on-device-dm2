@@ -46,6 +46,7 @@ import org.droidmate.accessibility.exploration.OnDeviceApk
 import org.droidmate.accessibility.exploration.OnDeviceConfigurationBuilder
 import org.droidmate.accessibility.exploration.OnDeviceExploration
 import org.droidmate.command.ExploreCommandBuilder
+import org.droidmate.configuration.ConfigProperties
 import org.droidmate.deviceInterface.exploration.Click
 import org.droidmate.deviceInterface.exploration.ClickEvent
 import org.droidmate.deviceInterface.exploration.Direction
@@ -110,6 +111,7 @@ open class AutomationEngine(
             modelProvider = DefaultModelProvider()
         )
     }
+    val delayedImgFetch by lazy { cfg[ConfigProperties.UiAutomatorServer.delayedImgFetch] }
 
     private val random = Random(0)
 
@@ -457,12 +459,8 @@ open class AutomationEngine(
         return screenshotEngine.takeScreenshot(actionNr)
     }
 
-    override fun getOrStoreImgPixels(bm: Bitmap?): ByteArray {
-        return screenshotEngine.getOrStoreImgPixels(bm)
-    }
-
-    override fun getOrStoreImgPixels(bm: Bitmap?, actionId: Int): ByteArray {
-        return screenshotEngine.getOrStoreImgPixels(bm, actionId)
+    override fun getAndStoreImgPixels(bm: Bitmap?, actionId: Int, delayedImgTransfer: Boolean): ByteArray {
+        return screenshotEngine.getAndStoreImgPixels(bm, actionId, delayedImgTransfer)
     }
 
     fun terminate() {
