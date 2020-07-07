@@ -7,7 +7,7 @@ To build the app use `./gradlew clean build`
 1. Push the `defaultConfig.properties` file to `/sdcard/` as we cannot load it as a resource by default using Konfig.
 
 ```
-adb push app/src/main/res/defaultConfig.properties /sdcard/
+adb push scripts/defaultConfig.properties /sdcard/
 ```
 
 2. Start the tool
