@@ -32,28 +32,13 @@ data class DisplayedWindow(
     fun isExtracted() = rootNode != null
     fun isApp() = windowType == AccessibilityWindowInfo.TYPE_APPLICATION
 
-    fun canReuseFor(newW: AccessibilityWindowInfo): Boolean {
-        val b = Rect()
-        newW.getBoundsInScreen(b)
-        val canReuse = w.windowId == newW.id &&
-                layer == newW.layer &&
-                bounds == b &&
-                (!isExtracted() ||
-                        (newW.root != null && w.pkgName == newW.root.packageName))
-
-        if (!canReuse) {
-            debugOut("extracted = ${isExtracted()} newW = ${newW.layer}, $b")
-        }
-
-        return canReuse
-    }
-
     companion object {
         operator fun invoke(
             wInfo: AccessibilityWindowInfo,
             uncoveredCoordinates: MutableList<Rect>,
             outRect: Rect,
             isKeyboard: Boolean,
+            displayDimension: DisplayDimension,
             deviceRoot: AccessibilityNodeInfo? = null
         ): DisplayedWindow {
 
@@ -80,7 +65,8 @@ data class DisplayedWindow(
                     root?.packageName?.toString() ?: "systemWindow_WithoutRoot",
                     wInfo.isFocused,
                     wInfo.isAccessibilityFocused,
-                    visibleOuterBounds(area)
+                    visibleOuterBounds(area),
+                    Pair(displayDimension.width, displayDimension.height)
                 ),
                 area,
                 // we cannot use type = INPUT_METHOD as this does not work on all devices e.g. Nexus 5X
@@ -105,4 +91,8 @@ data class DisplayedWindow(
             }
         }
     }
+}
+
+fun List<DisplayedWindow>.isHomeScreen() = count { it.isApp() }.let { nAppW ->
+    nAppW == 0 || (nAppW == 1 && any { it.isLauncher && it.isApp() })
 }

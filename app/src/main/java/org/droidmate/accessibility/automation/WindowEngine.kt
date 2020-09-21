@@ -265,12 +265,27 @@ class WindowEngine(
             }
     }
 
+    private fun DisplayedWindow.canReuseFor(newW: AccessibilityWindowInfo): Boolean {
+        val b = Rect()
+        newW.getBoundsInScreen(b)
+        return w.windowId == newW.id &&
+                layer == newW.layer &&
+                bounds == b &&
+                (!isExtracted() ||
+                (newW.root != null && w.pkgName == newW.root.packageName))
+            .also {
+                if (!it)
+                    debugOut("extracted = ${isExtracted()}; newW = ${newW.layer}, $b", debug)
+            }
+    }
+
     private suspend fun processWindows(
         window: AccessibilityWindowInfo,
         uncoveredC: MutableList<Rect>
     ): DisplayedWindow? {
         debugOut("process ${window.id}", false)
         var outRect = Rect()
+        val dim = getDisplayDimension()
         // REMARK we wait that the app AND keyboard root nodes are available for synchronization reasons
         // otherwise we may extract an app widget as definedAsVisible which would have been hidden behind the input window
         if (window.root == null &&
@@ -286,7 +301,6 @@ class WindowEngine(
                 // this is necessary since newly appearing keyboards may otherwise take the whole screen and
                 // thus screw up our visibility analysis
                 if (keyboardEngine.isKeyboard(root)) {
-                    val dim = getDisplayDimension()
                     // wrong keyboard boundaries reported
                     // keyboard should never cover more then 2/3 of the screen height
                     if (outRect.top <= dim.height / 3) {
@@ -312,6 +326,7 @@ class WindowEngine(
                     uncoveredC,
                     outRect,
                     keyboardEngine.isKeyboard(root),
+                    dim,
                     root
                 )
             }
@@ -330,7 +345,7 @@ class WindowEngine(
                 ?: "no ROOT!! type=${window.type}"}",
             debug
         )
-        return DisplayedWindow(window, uncoveredC, outRect, keyboardEngine.isKeyboard(window.root))
+        return DisplayedWindow(window, uncoveredC, outRect, keyboardEngine.isKeyboard(window.root), dim)
     }
 
     override suspend fun fetchDeviceData(actionNr: Int, delayedImgFetch: Boolean, afterAction: Boolean): DeviceResponse {
